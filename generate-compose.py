@@ -21,6 +21,7 @@ def create_compose(yaml_file, client_amnt):
             "entrypoint": "python3 /main.py",
             "environment": ["PYTHONUNBUFFERED=1","LOGGING_LEVEL=DEBUG"],
             "networks": ["testing_net"],
+            "volumes": ["./server/config.ini:/config.ini "],
     }
     services = { "services": {
         "server": server_config
@@ -33,7 +34,8 @@ def create_compose(yaml_file, client_amnt):
             "entrypoint": "/client",
             "environment": ["CLI_ID=" + str(i+1), "CLI_LOG_LEVEL=DEBUG"],
             "networks": ["testing_net"],
-            "depends_on": ["server"]
+            "depends_on": ["server"],
+            "volumes": ["./client/config.yaml:/config.yaml "]
         }
         services["services"]["client" + str(i+1)] = base_client_data
 
