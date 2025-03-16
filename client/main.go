@@ -3,7 +3,9 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/op/go-logging"
@@ -111,5 +113,18 @@ func main() {
 	}
 
 	client := common.NewClient(clientConfig)
+
+	// Create a channel to receive OS signals
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGTERM)
+
+	// Create a goroutine to handle signals
+	go func() {
+		sig := <-sigs
+		log.Infof("action: signal | result: success | signal: %v", sig)
+		client.CloseClient()
+		os.Exit(0)
+	}()
+
 	client.StartClientLoop()
 }

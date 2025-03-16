@@ -87,3 +87,8 @@ func (c *Client) StartClientLoop() {
 	}
 	log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)
 }
+
+// closeClientSocket Closes the client socket
+func (c *Client) CloseClient() {
+	c.conn.Close()
+}
