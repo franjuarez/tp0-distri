@@ -1,6 +1,7 @@
 import socket
 import logging
 import signal
+import sys
 
 class Server:
     def __init__(self, port, listen_backlog):
@@ -66,3 +67,4 @@ class Server:
         logging.info(f"action: signal_handler | result: success | signal: {sig}")
         self.stop()
         logging.info("action: graceful_shutdown | result: success")
+        sys.exit()

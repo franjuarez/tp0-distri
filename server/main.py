@@ -4,11 +4,12 @@ from configparser import ConfigParser
 from common.server import Server
 import logging
 import os
+import sys
 import signal
 
 def sigterm_signal_handler(sig, frame):
     logging.info('Signal received: {}. Exiting server'.format(sig))
-    exit(0)
+    sys.exit()
 
 def initialize_config():
     """ Parse env variables or config file to find program config params
