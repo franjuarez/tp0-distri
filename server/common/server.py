@@ -64,7 +64,6 @@ class Server:
         return c
     
     def __signal_handler(self, sig, frame):
-        logging.info(f"action: signal_handler | result: success | signal: {sig}")
         self.stop()
-        logging.info("action: graceful_shutdown | result: success")
+        logging.info(f"action: signal_handler | result: success | signal: {sig}")
         sys.exit()

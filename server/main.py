@@ -4,12 +4,7 @@ from configparser import ConfigParser
 from common.server import Server
 import logging
 import os
-import sys
 import signal
-
-def sigterm_signal_handler(sig, frame):
-    logging.info('Signal received: {}. Exiting server'.format(sig))
-    sys.exit()
 
 def initialize_config():
     """ Parse env variables or config file to find program config params
@@ -51,9 +46,6 @@ def main():
     # of the component
     logging.debug(f"action: config | result: success | port: {port} | "
                   f"listen_backlog: {listen_backlog} | logging_level: {logging_level}")
-
-    # Register signal handler
-    signal.signal(signal.SIGTERM, sigterm_signal_handler)
 
     # Initialize server and start server loop
     server = Server(port, listen_backlog)
