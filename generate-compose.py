@@ -1,48 +1,57 @@
-import yaml
 import sys
 
+SKELETON = """
+name: tp0
+services:
+"""
+
+SERVER = """
+  server:
+    container_name: server
+    image: server:latest
+    entrypoint: python3 /main.py
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOGGING_LEVEL=DEBUG
+    volumes:
+      - ./server/config.ini:/config.ini 
+    networks:
+      - testing_net
+"""
+
+NETWORKS = """
+networks:
+  testing_net:
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.25.125.0/24
+"""
+
 def create_compose(yaml_file, client_amnt):
-    skeleton = {
-        "name": "tp0"
-    }
-    networks = {
-        "networks":{
-            "testing_net": {
-            "ipam": {
-                "driver": "default",
-                "config": [{"subnet": "172.25.125.0/24"}],
-            }
-        }
-    }
-    }
-    server_config = {
-            "container_name": "server",
-            "image": "server:latest",
-            "entrypoint": "python3 /main.py",
-            "environment": ["PYTHONUNBUFFERED=1","LOGGING_LEVEL=DEBUG"],
-            "networks": ["testing_net"],
-            "volumes": ["./server/config.ini:/config.ini "],
-    }
-    services = { "services": {
-        "server": server_config
-        }}
-
-    for i in range(client_amnt):
-        base_client_data = {
-            "container_name": "client1",
-            "image": "client:latest",
-            "entrypoint": "/client",
-            "environment": ["CLI_ID=" + str(i+1), "CLI_LOG_LEVEL=DEBUG"],
-            "networks": ["testing_net"],
-            "depends_on": ["server"],
-            "volumes": ["./client/config.yaml:/config.yaml "]
-        }
-        services["services"]["client" + str(i+1)] = base_client_data
-
+    compose_str = SKELETON + SERVER
+    
+    for i in range(1, client_amnt + 1):
+        compose_str += f"""
+  client{i}:
+    container_name: client{i}
+    image: client:latest
+    entrypoint: /client
+    environment:
+      - CLI_ID={i}
+      - CLI_LOG_LEVEL=DEBUG
+    volumes:
+      - ./client/config.yaml:/config.yaml
+    networks:
+      - testing_net
+    depends_on:
+      - server
+"""
+    
+    compose_str += NETWORKS
+    
     with open(yaml_file, "w") as file:
-        yaml.dump(skeleton, file, default_flow_style=False)
-        yaml.dump(services, file, default_flow_style=False)
-        yaml.dump(networks, file, default_flow_style=False)
+        file.write(compose_str)
 
     return
 
