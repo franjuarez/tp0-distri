@@ -13,4 +13,4 @@ if [ "$RESPONSE" == "$MESSAGE" ]; then
     RESULT=success
 fi
 
-echo "action: test_echo_server result: $RESULT"
+echo "action: test_echo_server | result: $RESULT"
