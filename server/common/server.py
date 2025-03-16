@@ -20,7 +20,7 @@ class Server:
 
         # TODO: Modify this program to handle signal to graceful shutdown
         # the server
-        signal.signal(signal.SIGINT, self.__signal_handler)
+        signal.signal(signal.SIGTERM, self.__signal_handler)
 
         while True:
             client_sock = self.__accept_new_connection()
