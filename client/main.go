@@ -55,6 +55,11 @@ func InitConfig() (*viper.Viper, error) {
 		return nil, errors.Wrapf(err, "Could not parse CLI_LOOP_PERIOD env var as time.Duration.")
 	}
 
+	_, err := time.Parse("2006-01-02", v.GetString("nacimiento"))
+	if err != nil {
+		return nil, errors.Wrapf(err, "Could not parse CLI_NACIMIENTO env var as time ")
+	}
+
 	return v, nil
 }
 
@@ -126,5 +131,17 @@ func main() {
 		os.Exit(0)
 	}()
 
-	client.StartClientLoop()
+	
+	bet := common.Bet{
+		Name: v.GetString("nombre"),
+		LastName: v.GetString("apellido"),
+		Document: v.GetString("documento"),
+		BirthDay: v.GetTime("nacimiento"),
+		Number: v.GetString("numero"),
+	}
+
+	fmt.Println("bet parsed: ", bet)
+
+	// client.SendBet(bet)
+	// client.StartClientLoop()
 }

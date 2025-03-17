@@ -2,6 +2,8 @@ package common
 
 import (
 	"bufio"
+	"bytes"
+	"encoding/binary"
 	"fmt"
 	"net"
 	"time"
@@ -58,18 +60,28 @@ func (c *Client) StartClientLoop() {
 		// Create the connection the server in every loop iteration. Send an
 		c.createClientSocket()
 
-		// TODO: Modify the send to avoid short-write
-		fmt.Fprintf(
-			c.conn,
-			"[CLIENT %v] Message N°%v\n",
-			c.config.ID,
-			msgID,
-		)
-		msg, err := bufio.NewReader(c.conn).ReadString('\n')
-		c.conn.Close()
+		msg := fmt.Sprintf("[CLIENT %v] Message N°%v\n", c.config.ID, msgID)
+		err := writeAll(c.conn, []byte(msg))
+		if err != nil {
+			log.Errorf("action: send_message | result: fail | client_id: %v | error: %v",
+				c.config.ID,
+				err,
+			)
+			return
+		}
 
+		msg, err = bufio.NewReader(c.conn).ReadString('\n')
 		if err != nil {
 			log.Errorf("action: receive_message | result: fail | client_id: %v | error: %v",
+				c.config.ID,
+				err,
+			)
+			return
+		}
+
+		err = c.conn.Close()
+		if err != nil {
+			log.Errorf("action: close_connection | result: fail | client_id: %v | error: %v",
 				c.config.ID,
 				err,
 			)
@@ -86,6 +98,93 @@ func (c *Client) StartClientLoop() {
 
 	}
 	log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)
+}
+
+func (c *Client) createBetMessage(bet Bet) ([]byte, error) {
+	var buf bytes.Buffer
+
+	err := binary.Write(&buf, binary.BigEndian, byte(1))
+	if err != nil {
+		return nil, fmt.Errorf("error writing message type: %s", err.Error())
+	}
+
+	err = binary.Write(&buf, binary.BigEndian, uint16(len(bet.Name)))
+	if err != nil {
+		return nil, fmt.Errorf("error converting name len to uint16: %s", err.Error())
+	}  
+	buf.Write([]byte(bet.Name))            
+	
+	err = binary.Write(&buf, binary.BigEndian, uint16(len(bet.LastName)))
+	if err != nil {
+		return nil, fmt.Errorf("error converting last name len to uint16: %s", err.Error())
+	}
+	buf.Write([]byte(bet.LastName))      
+
+	birthDayStr := bet.BirthDay.Format("2006-01-02")
+	err = binary.Write(&buf, binary.BigEndian, uint16(len(birthDayStr)))
+	if err != nil {
+		return nil, fmt.Errorf("error converting birthDay len to uint16: %s", err.Error())
+	}
+	buf.Write([]byte(birthDayStr))       
+
+	
+	err = binary.Write(&buf, binary.BigEndian, uint16(len(bet.Number)))
+	if err != nil {
+		return nil, fmt.Errorf("error converting number len to uint16: %s", err.Error())
+	}
+	buf.Write([]byte(bet.Number))      
+
+	return buf.Bytes(), nil
+}
+
+func (c *Client) SendBet(bet Bet) error {
+	err := bet.Validate()
+	if err != nil {
+		return fmt.Errorf("error validating bet: %s", err.Error())
+	}
+
+	c.createClientSocket()
+
+	msg, err := c.createBetMessage(bet)
+	if err != nil {
+		return fmt.Errorf("error crating bet message: %s", err.Error())
+	}
+
+	fmt.Println("Message to send: ", string(msg))
+
+	err = writeAll(c.conn, msg)
+	if err != nil {
+		log.Errorf("action: send_message | result: fail | client_id: %v | error: %v",
+			c.config.ID,
+			err,
+		)
+		return err
+	}
+
+	response, err := bufio.NewReader(c.conn).ReadString('\n')
+	if err != nil {
+		log.Errorf("action: receive_message | result: fail | client_id: %v | error: %v",
+			c.config.ID,
+			err,
+		)
+		return err
+	}
+
+	err = c.conn.Close()
+	if err != nil {
+		log.Errorf("action: close_connection | result: fail | client_id: %v | error: %v",
+			c.config.ID,
+			err,
+		)
+		return err
+	}
+
+	log.Infof("action: receive_message | result: success | client_id: %v | msg: %v",
+		c.config.ID,
+		response,
+	)
+
+	return nil
 }
 
 // closeClientSocket Closes the client socket
