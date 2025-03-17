@@ -14,7 +14,7 @@ El protocolo contempla los siguientes tipos de mensajes:
 
 | Mensaje     | Código |
 |------------ |--------|
-| NEW_CLIENT  | 1      |
+| NEW_BET     | 1      |
 | ACK         | 2      |
 
 El flujo principal del programa es el siguiente:
@@ -25,12 +25,12 @@ El flujo principal del programa es el siguiente:
 
 ### Formato de Mensajes
 
-#### 🔹 Formato del mensaje `NEW_CLIENT`
-El mensaje `NEW_CLIENT` tiene la siguiente estructura:
+#### 🔹 Formato del mensaje `NEW_BET`
+El mensaje `NEW_BET` tiene la siguiente estructura:
 
 | Campo          | Tamaño (bytes) | Descripción                                      |
 |---------------|---------------|--------------------------------------------------|
-| **Tipo**      | 1             | Tipo de mensaje (`1` = NEW_CLIENT)               |
+| **Tipo**      | 1             | Tipo de mensaje (`1` = NEW_BET)               |
 | **Long. Nombre**  | 2         | Longitud en bytes del campo Nombre              |
 | **Nombre**    | L1            | Nombre de la persona                            |
 | **Long. Apellido** | 2        | Longitud en bytes del campo Apellido            |
