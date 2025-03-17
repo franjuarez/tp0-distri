@@ -1,5 +1,55 @@
 # TP0: Docker + Comunicaciones + Concurrencia
 
+# Explicacion de la solucion
+
+## Protocolo
+
+El protocolo define la estructura de los mensajes intercambiados entre el cliente y el servidor, asegurando una comunicación eficiente y estructurada en la aplicación.
+
+---
+
+### Mensajes
+
+El protocolo contempla los siguientes tipos de mensajes:
+
+| Mensaje     | Código |
+|------------ |--------|
+| NEW_CLIENT  | 1      |
+| ACK         | 2      |
+
+El flujo principal del programa es el siguiente:
+1. **El cliente envía** los datos de una persona para registrar una apuesta.
+2. **El servidor procesa la solicitud y devuelve** una confirmación (ACK).
+
+---
+
+### Formato de Mensajes
+
+#### 🔹 Formato del mensaje `NEW_CLIENT`
+El mensaje `NEW_CLIENT` tiene la siguiente estructura:
+
+| Campo          | Tamaño (bytes) | Descripción                                      |
+|---------------|---------------|--------------------------------------------------|
+| **Tipo**      | 1             | Tipo de mensaje (`1` = NEW_CLIENT)               |
+| **Long. Nombre**  | 2         | Longitud en bytes del campo Nombre              |
+| **Nombre**    | L1            | Nombre de la persona                            |
+| **Long. Apellido** | 2        | Longitud en bytes del campo Apellido            |
+| **Apellido**  | L2            | Apellido de la persona                          |
+| **Long. Nacim.**  | 2         | Longitud en bytes del campo Nacimiento          |
+| **Nacimiento** | L3           | Fecha de nacimiento (AAAA-MM-DD)                |
+| **Long. Número**  | 2         | Longitud en bytes del campo Número              |
+| **Número**    | L4            | Número de identificación                        |
+
+**Nota:** Se utilizaron **2 bytes** para representar las longitudes de cada campo, permitiendo mensajes de hasta **65 KB** de longitud, lo cual es suficiente para esta aplicación.
+
+---
+
+#### **🔹 Formato del mensaje `ACK`**
+El mensaje `ACK` es una simple confirmación del servidor con el siguiente formato:
+
+
+## Consigna
+
 En el presente repositorio se provee un esqueleto básico de cliente/servidor, en donde todas las dependencias del mismo se encuentran encapsuladas en containers. Los alumnos deberán resolver una guía de ejercicios incrementales, teniendo en cuenta las condiciones de entrega descritas al final de este enunciado.
 
  El cliente (Golang) y el servidor (Python) fueron desarrollados en diferentes lenguajes simplemente para mostrar cómo dos lenguajes de programación pueden convivir en el mismo proyecto con la ayuda de containers, en este caso utilizando [Docker Compose](https://docs.docker.com/compose/).
