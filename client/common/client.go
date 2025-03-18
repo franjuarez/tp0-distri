@@ -155,8 +155,6 @@ func (c *Client) SendBet(bet Bet) error {
 		return fmt.Errorf("error crating bet message: %s", err.Error())
 	}
 
-	fmt.Println("Message to send: ", msg)
-
 	err = writeAll(c.conn, msg)
 	if err != nil {
 		log.Errorf("action: send_message | result: fail | client_id: %v | error: %v",
@@ -166,10 +164,17 @@ func (c *Client) SendBet(bet Bet) error {
 		return err
 	}
 
-	fmt.Println("message sent")
-
-	response, err := bufio.NewReader(c.conn).ReadString('\n')
+	response, err := bufio.NewReader(c.conn).ReadByte()
 	if err != nil {
+		log.Errorf("action: receive_message | result: fail | client_id: %v | error: %v",
+			c.config.ID,
+			err,
+		)
+		return err
+	}
+
+	if response != MSG_ACK {
+		err := fmt.Errorf("error: unexpected response from server, expected ACK, got: %v", response)
 		log.Errorf("action: receive_message | result: fail | client_id: %v | error: %v",
 			c.config.ID,
 			err,
@@ -186,9 +191,9 @@ func (c *Client) SendBet(bet Bet) error {
 		return err
 	}
 
-	log.Infof("action: receive_message | result: success | client_id: %v | msg: %v",
-		c.config.ID,
-		response,
+	log.Infof("action: apuesta_enviada | result: success | dni: %s | numero: %s",
+		bet.Document,
+		bet.Number,
 	)
 
 	return nil
