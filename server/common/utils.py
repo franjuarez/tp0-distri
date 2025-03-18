@@ -47,6 +47,3 @@ def load_bets() -> list[Bet]:
         reader = csv.reader(file, quoting=csv.QUOTE_MINIMAL)
         for row in reader:
             yield Bet(row[0], row[1], row[2], row[3], row[4], row[5])
-
-def recvall(skt, n):
-    return skt.recv(n, socket.MSG_WAITALL)

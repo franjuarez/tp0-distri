@@ -2,12 +2,8 @@ import socket
 import logging
 import signal
 import sys
+from .protocol import MessageType, Protocol
 from . import utils
-from enum import Enum
-
-class MessageType(Enum):
-    NEW_CLIENT = 0
-    ACK = 1
 
 class Server:
     def __init__(self, port, listen_backlog):
@@ -29,45 +25,26 @@ class Server:
 
         while True:
             client_sock = self.__accept_new_connection()
-            self.__handle_client_connection(client_sock)
+            protocol = Protocol(client_sock)
+            self.__handle_client_connection(protocol)
 
     def stop(self):
         self._server_socket.close()
 
-    def __read_new_client_bet(self, client_sock):
-        """Lee y parsea un mensaje NEW_BET del cliente."""
-
-        def read_field(sock, size):
-            """Lee un campo de tamaño variable correctamente."""
-            raw_len = utils.recvall(sock, size)
-            field_len = int.from_bytes(raw_len, "big")
-            return utils.recvall(sock, field_len).decode("utf-8")
-        
-        name = read_field(client_sock, 2)
-        last_name = read_field(client_sock, 2)
-        document = read_field(client_sock, 2)
-        birth_day = read_field(client_sock, 2)
-        number = read_field(client_sock, 2)
-
-        print("name: {}, last name: {}, document: {}, birthday: {}, number: {}".format(name, last_name, document, birth_day, number))
-        bet = utils.Bet("1", name, last_name, document,birth_day, number)
-        return bet
-    
-    def __read_new_message(self, client_sock):
+    def __read_new_message(self, protocol):
         """Lee el tipo de mensaje y maneja NEW_BET."""
-        msg_type = utils.recvall(client_sock, 1)
-        msg_type = MessageType(int.from_bytes(msg_type, "big"))
+        msg_type = protocol.read_new_message()
         
         if msg_type == MessageType.NEW_CLIENT:
-            bet_data = self.__read_new_client_bet(client_sock)
+            bet_data = protocol.read_new_client_bet()
             utils.store_bets([bet_data])
+            protocol.send_ack()
             logging.info(f'action: apuesta_almacenada | result: success | dni: {bet_data.document} | numero: {bet_data.number}')
-            client_sock.sendall(MessageType.ACK.value.to_bytes(1, "big"))
         else:
-            raise Exception(f"Unexpected message type:{msg_type}")
+            raise ValueError(f"Unexpected message type:{msg_type}")
 
 
-    def __handle_client_connection(self, client_sock):
+    def __handle_client_connection(self, protocol):
         """
         Read message from a specific client socket and closes the socket
 
@@ -75,13 +52,13 @@ class Server:
         client socket will also be closed
         """
         try:
-            self.__read_new_message(client_sock)
+            self.__read_new_message(protocol)
         except OSError as e:
             logging.error("action: receive_message | result: fail | error: {}".format(e))
         except Exception as e:
             logging.error("action: receive_message or send_message | result: fail | unexpected error: {}".format(e))
         finally:
-            client_sock.close()
+            protocol.close()
 
     def __accept_new_connection(self):
         """
