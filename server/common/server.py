@@ -2,6 +2,12 @@ import socket
 import logging
 import signal
 import sys
+from . import utils
+from enum import Enum
+
+class MessageType(Enum):
+    NEW_CLIENT = 0
+    ACK = 1
 
 class Server:
     def __init__(self, port, listen_backlog):
@@ -19,8 +25,6 @@ class Server:
         finishes, servers starts to accept new connections again
         """
 
-        # TODO: Modify this program to handle signal to graceful shutdown
-        # the server
         signal.signal(signal.SIGTERM, self.__signal_handler)
 
         while True:
@@ -30,6 +34,39 @@ class Server:
     def stop(self):
         self._server_socket.close()
 
+    def __read_new_client_bet(self, client_sock):
+        """Lee y parsea un mensaje NEW_BET del cliente."""
+
+        def read_field(sock, size):
+            """Lee un campo de tamaño variable correctamente."""
+            raw_len = utils.recvall(sock, size)
+            field_len = int.from_bytes(raw_len, "big")
+            print("len: {}".format(field_len))
+            return utils.recvall(sock, field_len).decode("utf-8")
+        
+        name = read_field(client_sock, 2)
+        last_name = read_field(client_sock, 2)
+        document = read_field(client_sock, 2)
+        birth_day = read_field(client_sock, 2)
+        number = read_field(client_sock, 2)
+
+        print("name: {}, last name: {}, document: {}, birthday: {}, number: {}".format(name, last_name, document, birth_day, number))
+        bet = utils.Bet("1", name, last_name, document,birth_day, number)
+        return bet
+    
+    def __read_new_message(self, client_sock):
+        """Lee el tipo de mensaje y maneja NEW_BET."""
+        msg_type = utils.recvall(client_sock, 1)
+        msg_type = MessageType(int.from_bytes(msg_type, "big"))
+        
+        if msg_type == MessageType.NEW_CLIENT:
+            print("Got a NEW CLIENT msg")
+            bet_data = self.__read_new_client_bet(client_sock)
+            return bet_data
+        else:
+            raise Exception(f"Unexpected message type:{msg_type}")
+
+
     def __handle_client_connection(self, client_sock):
         """
         Read message from a specific client socket and closes the socket
@@ -38,14 +75,16 @@ class Server:
         client socket will also be closed
         """
         try:
-            # TODO: Modify the receive to avoid short-reads
-            msg = client_sock.recv(1024).rstrip().decode('utf-8')
-            addr = client_sock.getpeername()
-            logging.info(f'action: receive_message | result: success | ip: {addr[0]} | msg: {msg}')
-            # TODO: Modify the send to avoid short-writes
-            client_sock.send("{}\n".format(msg).encode('utf-8'))
+            self.__read_new_message(client_sock)
+            # addr = client_sock.getpeername()
+
+            # logging.info(f'action: receive_message | result: success | ip: {addr[0]} | msg: {msg}')
+
+            # client_sock.sendall("{}\n".format(msg).encode('utf-8'))
         except OSError as e:
-            logging.error("action: receive_message | result: fail | error: {e}")
+            logging.error("action: receive_message | result: fail | error: {}".format(e))
+        except Exception as e:
+            logging.error("action: receive_message or send_message | result: fail | unexpected error: {}".format(e))
         finally:
             client_sock.close()
 
