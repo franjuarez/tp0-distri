@@ -41,7 +41,6 @@ class Server:
             """Lee un campo de tamaño variable correctamente."""
             raw_len = utils.recvall(sock, size)
             field_len = int.from_bytes(raw_len, "big")
-            print("len: {}".format(field_len))
             return utils.recvall(sock, field_len).decode("utf-8")
         
         name = read_field(client_sock, 2)
@@ -60,9 +59,10 @@ class Server:
         msg_type = MessageType(int.from_bytes(msg_type, "big"))
         
         if msg_type == MessageType.NEW_CLIENT:
-            print("Got a NEW CLIENT msg")
             bet_data = self.__read_new_client_bet(client_sock)
-            return bet_data
+            utils.store_bets([bet_data])
+            logging.info(f'action: apuesta_almacenada | result: success | dni: {bet_data.document} | numero: {bet_data.number}')
+            client_sock.sendall(MessageType.ACK.value.to_bytes(1, "big"))
         else:
             raise Exception(f"Unexpected message type:{msg_type}")
 
@@ -76,11 +76,6 @@ class Server:
         """
         try:
             self.__read_new_message(client_sock)
-            # addr = client_sock.getpeername()
-
-            # logging.info(f'action: receive_message | result: success | ip: {addr[0]} | msg: {msg}')
-
-            # client_sock.sendall("{}\n".format(msg).encode('utf-8'))
         except OSError as e:
             logging.error("action: receive_message | result: fail | error: {}".format(e))
         except Exception as e:
