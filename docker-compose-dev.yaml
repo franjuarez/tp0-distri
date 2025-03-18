@@ -23,7 +23,7 @@ services:
       - CLI_APELLIDO=Juarez
       - CLI_DOCUMENTO=12345678
       - CLI_NACIMIENTO=2000-11-11
-      - CLI_NUMERO= 7575
+      - CLI_NUMERO=7575
     volumes:
       - ./client/config.yaml:/config.yaml
     networks:
