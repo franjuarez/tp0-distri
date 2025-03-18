@@ -1,7 +1,7 @@
 package common
 
-//iota for the different types of messages
+// iota for the different types of messages
 const (
-	new_bet uint8 = iota
-	ack
+	MSG_NEW_BET uint8 = iota
+	MSG_ACK
 )

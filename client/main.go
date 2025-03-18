@@ -139,9 +139,7 @@ func main() {
 		BirthDay: v.GetTime("nacimiento"),
 		Number: v.GetString("numero"),
 	}
-
-	fmt.Println("bet parsed: ", bet)
-
-	// client.SendBet(bet)
+	
+	client.SendBet(bet)
 	// client.StartClientLoop()
 }
