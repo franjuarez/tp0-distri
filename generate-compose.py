@@ -38,6 +38,11 @@ def create_compose(yaml_file, client_amnt):
     entrypoint: /client
     environment:
       - CLI_ID={i}
+      - CLI_NOMBRE=Francisco
+      - CLI_APELLIDO=Juarez
+      - CLI_DOCUMENTO=12345678
+      - CLI_NACIMIENTO=2000-11-11
+      - CLI_NUMERO=7575
     volumes:
       - ./client/config.yaml:/config.yaml
     networks:
