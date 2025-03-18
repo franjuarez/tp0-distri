@@ -35,10 +35,12 @@ El mensaje `NEW_BET` tiene la siguiente estructura:
 | **Nombre**    | L1            | Nombre de la persona                            |
 | **Long. Apellido** | 2        | Longitud en bytes del campo Apellido            |
 | **Apellido**  | L2            | Apellido de la persona                          |
+| **Long. Documento** | 2       | Longitud en bytes del campo Documento            |
+| **Documento**  | L3            | Documento de la persona                          |
 | **Long. Nacim.**  | 2         | Longitud en bytes del campo Nacimiento          |
-| **Nacimiento** | L3           | Fecha de nacimiento (AAAA-MM-DD)                |
+| **Nacimiento** | L4           | Fecha de nacimiento (AAAA-MM-DD)                |
 | **Long. Número**  | 2         | Longitud en bytes del campo Número              |
-| **Número**    | L4            | Número de identificación                        |
+| **Número**    | L5            | Número de identificación                        |
 
 **Nota:** Se utilizaron **2 bytes** para representar las longitudes de cada campo, permitiendo mensajes de hasta **65 KB** de longitud, lo cual es suficiente para esta aplicación.
 
