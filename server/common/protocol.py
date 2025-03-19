@@ -26,15 +26,15 @@ class Protocol:
     
     def read_new_client_bet(self):
         """Lee y parsea un mensaje NEW_BET del cliente."""
-        
+        agency_number = self.__recvall(self.client_socket, 1).decode("utf-8")
         name = self.__read_field(self.client_socket, 2)
         last_name = self.__read_field(self.client_socket, 2)
         document = self.__read_field(self.client_socket, 2)
         birth_day = self.__read_field(self.client_socket, 2)
         number = self.__read_field(self.client_socket, 2)
 
-        print("name: {}, last name: {}, document: {}, birthday: {}, number: {}".format(name, last_name, document, birth_day, number))
-        return utils.Bet("1", name, last_name, document,birth_day, number)
+        print("agency: {}, name: {}, last name: {}, document: {}, birthday: {}, number: {}".format(agency_number, name, last_name, document, birth_day, number))
+        return utils.Bet(agency_number, name, last_name, document,birth_day, number)
     
     def read_new_message(self):
         """Lee y devuelve el tipo de mensaje."""

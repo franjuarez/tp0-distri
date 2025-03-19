@@ -57,7 +57,7 @@ func (c *Client) SendBet(bet Bet) error {
 
 	c.createClientConnection()
 
-	err = c.protocol.SendNewBet(bet)
+	err = c.protocol.SendNewBetMessage(c.config.ID, bet)
 	if err != nil {
 		log.Errorf("action: send_message | result: fail | client_id: %v | error: %v",
 			c.config.ID,

@@ -9,7 +9,7 @@ import (
 )
 
 type Protocol struct {
-	conn  *net.Conn
+	conn *net.Conn
 }
 
 func NewProtocol(conn *net.Conn) *Protocol {
@@ -37,54 +37,59 @@ func (p *Protocol) writeAll(msg []byte) error {
 func (p *Protocol) createBetMessage(bet Bet) ([]byte, error) {
 	var buf bytes.Buffer
 
-	err := binary.Write(&buf, binary.BigEndian, MSG_NEW_BET)
-	if err != nil {
-		return nil, fmt.Errorf("error writing message type: %s", err.Error())
-	}
-
-	err = binary.Write(&buf, binary.BigEndian, uint16(len(bet.Name)))
-	if err != nil {
-		return nil, fmt.Errorf("error converting name len to uint16: %s", err.Error())
+	if err := binary.Write(&buf, binary.BigEndian, uint16(len(bet.Name))); err != nil {
+		return nil, fmt.Errorf("error converting name len to uint16: %w", err)
 	}
 	buf.Write([]byte(bet.Name))
 
-	err = binary.Write(&buf, binary.BigEndian, uint16(len(bet.LastName)))
-	if err != nil {
-		return nil, fmt.Errorf("error converting last name len to uint16: %s", err.Error())
+	if err := binary.Write(&buf, binary.BigEndian, uint16(len(bet.LastName))); err != nil {
+		return nil, fmt.Errorf("error converting last name len to uint16: %w", err)
 	}
 	buf.Write([]byte(bet.LastName))
 
-	err = binary.Write(&buf, binary.BigEndian, uint16(len(bet.Document)))
-	if err != nil {
-		return nil, fmt.Errorf("error converting document len to uint16: %s", err.Error())
+	if err := binary.Write(&buf, binary.BigEndian, uint16(len(bet.Document))); err != nil {
+		return nil, fmt.Errorf("error converting document len to uint16: %w", err)
 	}
 	buf.Write([]byte(bet.Document))
 
 	birthDayStr := bet.BirthDay.Format("2006-01-02")
-	err = binary.Write(&buf, binary.BigEndian, uint16(len(birthDayStr)))
-	if err != nil {
-		return nil, fmt.Errorf("error converting birthDay len to uint16: %s", err.Error())
+	if err := binary.Write(&buf, binary.BigEndian, uint16(len(birthDayStr))); err != nil {
+		return nil, fmt.Errorf("error converting birthDay len to uint16: %w", err)
 	}
 	buf.Write([]byte(birthDayStr))
 
-	err = binary.Write(&buf, binary.BigEndian, uint16(len(bet.Number)))
-	if err != nil {
-		return nil, fmt.Errorf("error converting number len to uint16: %s", err.Error())
+	if err := binary.Write(&buf, binary.BigEndian, uint16(len(bet.Number))); err != nil {
+		return nil, fmt.Errorf("error converting number len to uint16: %w", err)
 	}
 	buf.Write([]byte(bet.Number))
 
 	return buf.Bytes(), nil
 }
 
-func (p *Protocol) SendNewBet(bet Bet) error {
-	msg, err := p.createBetMessage(bet)
-	if err != nil {
-		return fmt.Errorf("error crating bet message: %s", err.Error())
+func (p *Protocol) SendNewBetMessage(agencyId string, bet Bet) error {
+	if len(agencyId) != 1 {
+		return fmt.Errorf("error writing agency id: invalid length")
 	}
 
-	err = p.writeAll(msg)
+	var buf bytes.Buffer
+
+	if err := binary.Write(&buf, binary.BigEndian, MSG_NEW_BET); err != nil {
+		return fmt.Errorf("error writing message type: %w", err)
+	}
+
+	if err := buf.WriteByte(agencyId[0]); err != nil {
+		return fmt.Errorf("error writing agency id: %w", err)
+	}
+
+	msg, err := p.createBetMessage(bet)
 	if err != nil {
-		return fmt.Errorf("error sending message: %s", err.Error())
+		return fmt.Errorf("error crating bet message: %w", err)
+	}
+
+	buf.Write(msg)
+
+	if err := p.writeAll(buf.Bytes()); err != nil {
+		return fmt.Errorf("error sending message: %w", err)
 	}
 
 	return nil
@@ -93,7 +98,7 @@ func (p *Protocol) SendNewBet(bet Bet) error {
 func (p *Protocol) ReceiveAck() error {
 	msg, err := bufio.NewReader(*p.conn).ReadByte()
 	if err != nil {
-		return fmt.Errorf("error receiving message: %s", err.Error())
+		return fmt.Errorf("error receiving message: %w", err)
 	}
 
 	if msg != MSG_ACK {
@@ -104,10 +109,8 @@ func (p *Protocol) ReceiveAck() error {
 }
 
 func (p *Protocol) Close() error {
-	err := (*p.conn).Close()
-	if err != nil {
+	if err := (*p.conn).Close(); err != nil {
 		return fmt.Errorf("error closing connection: %s", err.Error())
 	}
-
 	return nil
 }

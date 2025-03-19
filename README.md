@@ -31,6 +31,7 @@ El mensaje `NEW_BET` tiene la siguiente estructura:
 | Campo          | Tamaño (bytes) | Descripción                                      |
 |---------------|---------------|--------------------------------------------------|
 | **Tipo**      | 1             | Tipo de mensaje (`1` = NEW_BET)               |
+| **Nro de agencia** | 1             | Numero de la agencia              |
 | **Long. Nombre**  | 2         | Longitud en bytes del campo Nombre              |
 | **Nombre**    | L1            | Nombre de la persona                            |
 | **Long. Apellido** | 2        | Longitud en bytes del campo Apellido            |
