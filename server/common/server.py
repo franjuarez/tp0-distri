@@ -31,17 +31,45 @@ class Server:
     def stop(self):
         self._server_socket.close()
 
-    def __read_new_message(self, protocol):
-        """Lee el tipo de mensaje y maneja NEW_BET."""
-        msg_type = protocol.read_new_message()
-        
-        if msg_type == MessageType.NEW_CLIENT:
+    def __handle_new_bet_message(self, protocol):
+        try:
             bet_data = protocol.read_new_client_bet()
             utils.store_bets([bet_data])
             protocol.send_ack()
             logging.info(f'action: apuesta_almacenada | result: success | dni: {bet_data.document} | numero: {bet_data.number}')
-        else:
-            raise ValueError(f"Unexpected message type:{msg_type}")
+        except ValueError as e:
+            logging.error(f"action: apuesta_almacenada | result: fail | dni: {bet_data.document} | numero: {bet_data.number}")
+            logging.error(f"error: {e}")
+
+    def __handle_new_bets_batch_message(self, protocol):
+        try:
+            bets_data = protocol.read_new_bets_batch()
+            utils.store_bets(bets_data)
+            protocol.send_ack()
+            logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets_data)}')
+        except Exception as e:
+            logging.error(f"action: apuesta_recibida | result: fail | cantidad: {len(bets_data) if 'bets_data' in locals() else 0}")
+            logging.error(f"error: {e}")
+            try:
+                protocol.send_nack()
+            except Exception as nack_error:
+                logging.error(f"action: send_nack | result: fail | error: {nack_error}")
+
+    def __read_new_message(self, protocol):
+        """Lee el tipo de mensaje y maneja NEW_BET."""
+        try: 
+            msg_type = protocol.read_new_message()
+            
+            if msg_type == MessageType.NEW_BET:
+                self.__handle_new_bet_message(protocol)
+            elif msg_type == MessageType.NEW_BETS_BATCH:
+                self.__handle_new_bets_batch_message(protocol)
+            else:
+                raise ValueError(f"Unexpected message type:{msg_type}")
+        except ValueError as e:
+            logging.error(f"action: receive_message | result: fail | error: {e}")
+        except Exception as e:
+            logging.error(f"action: receive_message | result: fail | unexpected error: {e}")
 
 
     def __handle_client_connection(self, protocol):

@@ -12,10 +12,12 @@ El protocolo define la estructura de los mensajes intercambiados entre el client
 
 El protocolo contempla los siguientes tipos de mensajes:
 
-| Mensaje     | Código |
-|------------ |--------|
-| NEW_BET     | 1      |
-| ACK         | 2      |
+| Mensaje        | Código |
+|----------------|--------|
+| NEW_BET        | 0      |
+| ACK            | 1      |
+| NEW_BETS_BATCH | 2      |
+| NACK           | 3      |
 
 El flujo principal del programa es el siguiente:
 1. **El cliente envía** los datos de una persona para registrar una apuesta.
@@ -48,8 +50,30 @@ El mensaje `NEW_BET` tiene la siguiente estructura:
 ---
 
 #### **🔹 Formato del mensaje `ACK`**
-El mensaje `ACK` es una simple confirmación del servidor con el siguiente formato:
+El mensaje `ACK` es una simple confirmación del servidor.
 
+---
+
+#### 🔹 Formato del mensaje `NEW_BETS_BATCH`
+El mensaje `NEW_BETS_BATCH` tiene la siguiente estructura:
+
+| Campo                | Tamaño (bytes) | Descripción                                      |
+|----------------------|--------------- |--------------------------------------------------|
+| **Tipo**             | 1              | Tipo de mensaje (`3` = NEW_BETS_BATCH)           |
+| **Nro de agencia**   | 1              | Numero de la agencia                             |
+| **Cantidad de bets** | 2              | Cantidad de bets en el mensaje                   |
+| **Bets**             | Variable       | Secuencia de apuestas en el formato de `NEW_BET` |
+
+Cada apuesta dentro del batch sigue el mismo formato que el mensaje NEW_BET, sin incluir ni el campo Tipo ni Agencia nuevamente.
+
+**Nota:** Se utilizaron **2 bytes** para representar la cantidad de bets, permitiendo mandar hasta **65.535** apuestas, lo cual es suficiente para esta aplicación.
+
+---
+
+#### **🔹 Formato del mensaje `NACK`**
+El mensaje `NACK` es un mensaje del servidor que representa un error en algun mensaje mandado por parte del cliente
+
+---
 
 ## Consigna
 
