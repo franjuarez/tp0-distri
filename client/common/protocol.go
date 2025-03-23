@@ -1,11 +1,20 @@
 package common
 
 import (
-	"bufio"
-	"bytes"
 	"encoding/binary"
 	"fmt"
 	"net"
+	"strconv"
+)
+
+const maxBatchSize = 8192
+
+// iota for the different types of messages
+const (
+	MSG_NEW_BET uint8 = iota
+	MSG_ACK
+	MSG_NEW_BETS_BATCH
+	MSG_NACK
 )
 
 type Protocol struct {
@@ -13,99 +22,155 @@ type Protocol struct {
 }
 
 func NewProtocol(conn *net.Conn) *Protocol {
-	return &Protocol{
-		conn: conn,
-	}
+	return &Protocol{conn: conn}
 }
 
-func (p *Protocol) writeAll(msg []byte) error {
-	writer := bufio.NewWriter(*p.conn)
+func (p *Protocol) recvAll(size int) ([]byte, error) {
+	buf := make([]byte, size)
+	total := 0
 
-	_, err := writer.Write(msg)
-	if err != nil {
-		return fmt.Errorf("error writing to connection: %v", err)
+	for total < size {
+		n, err := (*p.conn).Read(buf[total:])
+		if err != nil || n == 0 {
+			return nil, err
+		}
+		total += n
 	}
+	return buf, nil
+}
 
-	err = writer.Flush()
-	if err != nil {
-		return fmt.Errorf("error flushing connection: %v", err)
+func (p *Protocol) sendAll(msg []byte) error {
+	written := 0
+	for written < len(msg) {
+		n, err := (*p.conn).Write(msg[written:])
+		if err != nil {
+			return fmt.Errorf("error writing message: %w", err)
+		}
+		if n == 0 {
+			return fmt.Errorf("error writing message: wrote 0 bytes")
+		}
+		written += n
 	}
-
 	return nil
+}
+
+func encodeStringWithOneByteLength(s string, buf []byte) ([]byte, error) {
+	if len(s) > 255 {
+		return nil, fmt.Errorf("string too long")
+	}
+	buf = append(buf, byte(len(s)))
+	buf = append(buf, []byte(s)...)
+	return buf, nil
 }
 
 func (p *Protocol) createBetMessage(bet Bet) ([]byte, error) {
-	var buf bytes.Buffer
+	msg := make([]byte, 0)
 
-	if err := binary.Write(&buf, binary.BigEndian, uint16(len(bet.Name))); err != nil {
-		return nil, fmt.Errorf("error converting name len to uint16: %w", err)
+	msg, err := encodeStringWithOneByteLength(bet.FirstName, msg)
+	if err != nil {
+		return nil, fmt.Errorf("error serializing name: %w", err)
 	}
-	buf.Write([]byte(bet.Name))
 
-	if err := binary.Write(&buf, binary.BigEndian, uint16(len(bet.LastName))); err != nil {
-		return nil, fmt.Errorf("error converting last name len to uint16: %w", err)
+	msg, err = encodeStringWithOneByteLength(bet.LastName, msg)
+	if err != nil {
+		return nil, fmt.Errorf("error serializing last name: %w", err)
 	}
-	buf.Write([]byte(bet.LastName))
 
-	if err := binary.Write(&buf, binary.BigEndian, uint16(len(bet.Document))); err != nil {
-		return nil, fmt.Errorf("error converting document len to uint16: %w", err)
+	msg, err = encodeStringWithOneByteLength(bet.Document, msg)
+	if err != nil {
+		return nil, fmt.Errorf("error serializing document: %w", err)
 	}
-	buf.Write([]byte(bet.Document))
 
-	birthDayStr := bet.BirthDay.Format("2006-01-02")
-	if err := binary.Write(&buf, binary.BigEndian, uint16(len(birthDayStr))); err != nil {
-		return nil, fmt.Errorf("error converting birthDay len to uint16: %w", err)
+	birthDayStr := bet.BirthDate.Format("2006-01-02")
+	msg, err = encodeStringWithOneByteLength(birthDayStr, msg)
+	if err != nil {
+		return nil, fmt.Errorf("error serializing birth day: %w", err)
 	}
-	buf.Write([]byte(birthDayStr))
 
-	if err := binary.Write(&buf, binary.BigEndian, uint16(len(bet.Number))); err != nil {
-		return nil, fmt.Errorf("error converting number len to uint16: %w", err)
+	msg, err = encodeStringWithOneByteLength(bet.Number, msg)
+	if err != nil {
+		return nil, fmt.Errorf("error serializing number: %w", err)
 	}
-	buf.Write([]byte(bet.Number))
 
-	return buf.Bytes(), nil
+	return msg, nil
 }
 
-func (p *Protocol) SendNewBetMessage(agencyId string, bet Bet) error {
-	if len(agencyId) != 1 {
-		return fmt.Errorf("error writing agency id: invalid length")
-	}
-
-	var buf bytes.Buffer
-
-	if err := binary.Write(&buf, binary.BigEndian, MSG_NEW_BET); err != nil {
-		return fmt.Errorf("error writing message type: %w", err)
-	}
-
-	if err := buf.WriteByte(agencyId[0]); err != nil {
-		return fmt.Errorf("error writing agency id: %w", err)
-	}
-
-	msg, err := p.createBetMessage(bet)
+func (p *Protocol) SendBet(bet Bet, agencyId string) error {
+	agencyInt, err := strconv.ParseUint(agencyId, 10, 8)
 	if err != nil {
-		return fmt.Errorf("error crating bet message: %w", err)
+		return fmt.Errorf("error converting agency id to uint8: %w", err)
 	}
 
-	buf.Write(msg)
+	msg := make([]byte, 0)
+	msg = append(msg, MSG_NEW_BET)
+	msg = append(msg, byte(agencyInt))
 
-	if err := p.writeAll(buf.Bytes()); err != nil {
+	betMsg, err := p.createBetMessage(bet)
+	if err != nil {
+		return err
+	}
+
+	msg = append(msg, betMsg...)
+
+	err = p.sendAll(msg)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+
+func (p *Protocol) SendBets(bets []Bet, agencyId string) error {
+	agencyInt, err := strconv.ParseUint(agencyId, 10, 8)
+	if err != nil {
+		return fmt.Errorf("error converting agency id to uint8: %w", err)
+	}
+
+	msg := make([]byte, 0)
+	msg = append(msg, MSG_NEW_BETS_BATCH)
+	msg = append(msg, byte(agencyInt))
+	
+	amountBytes := make([]byte, 2)
+	binary.BigEndian.PutUint16(amountBytes, uint16(len(bets)))
+	msg = append(msg, amountBytes...)
+	
+	if err := p.sendAll(msg); err != nil {
 		return fmt.Errorf("error sending message: %w", err)
 	}
 
+	var batch []byte
+	for _, bet := range bets {
+		betMsg, err := p.createBetMessage(bet)
+		if err != nil {
+			return fmt.Errorf("error creating bet message: %w", err)
+		}
+
+		if len(batch)+len(betMsg) > maxBatchSize {
+			if err := p.sendAll(batch); err != nil {
+				return fmt.Errorf("error sending batch message: %w", err)
+			}
+			batch = make([]byte, 0)
+		}
+
+		batch = append(batch, betMsg...)
+	}
+
+
+	if len(batch) > 0 {
+		if err := p.sendAll(batch); err != nil {
+			return fmt.Errorf("error sending batch message: %w", err)
+		}
+	}
+
 	return nil
 }
 
-func (p *Protocol) ReceiveAck() error {
-	msg, err := bufio.NewReader(*p.conn).ReadByte()
+func (p *Protocol) RecvAnswer() (uint8, error) {
+	answer, err := p.recvAll(1)
 	if err != nil {
-		return fmt.Errorf("error receiving message: %w", err)
+		return 0, fmt.Errorf("error reading answer: %w", err)
 	}
-
-	if msg != MSG_ACK {
-		return fmt.Errorf("error receiving ack message: unexpected message type: %v", msg)
-	}
-
-	return nil
+	return uint8(answer[0]), nil
 }
 
 func (p *Protocol) Close() error {

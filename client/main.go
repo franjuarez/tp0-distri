@@ -39,6 +39,7 @@ func InitConfig() (*viper.Viper, error) {
 	v.BindEnv("loop", "period")
 	v.BindEnv("loop", "amount")
 	v.BindEnv("log", "level")
+	v.BindEnv("batch", "maxAmount")
 
 	// Try to read configuration from config file. If config file
 	// does not exists then ReadInConfig will fail but configuration
@@ -53,11 +54,6 @@ func InitConfig() (*viper.Viper, error) {
 
 	if _, err := time.ParseDuration(v.GetString("loop.period")); err != nil {
 		return nil, errors.Wrapf(err, "Could not parse CLI_LOOP_PERIOD env var as time.Duration.")
-	}
-
-	_, err := time.Parse("2006-01-02", v.GetString("nacimiento"))
-	if err != nil {
-		return nil, errors.Wrapf(err, "Could not parse CLI_NACIMIENTO env var as time ")
 	}
 
 	return v, nil
@@ -94,6 +90,7 @@ func PrintConfig(v *viper.Viper) {
 		v.GetInt("loop.amount"),
 		v.GetDuration("loop.period"),
 		v.GetString("log.level"),
+		v.GetInt("batch.maxAmount"),
 	)
 }
 
@@ -115,6 +112,7 @@ func main() {
 		ID:            v.GetString("id"),
 		LoopAmount:    v.GetInt("loop.amount"),
 		LoopPeriod:    v.GetDuration("loop.period"),
+		BatchSize:     v.GetInt("batch.maxAmount"),
 	}
 
 	client := common.NewClient(clientConfig)
@@ -127,19 +125,10 @@ func main() {
 	go func() {
 		sig := <-sigs
 		log.Infof("action: signal | result: success | signal: %v", sig)
-		client.CloseClient()
+		client.Close()
 		os.Exit(0)
 	}()
 
-	
-	bet := common.Bet{
-		Name: v.GetString("nombre"),
-		LastName: v.GetString("apellido"),
-		Document: v.GetString("documento"),
-		BirthDay: v.GetTime("nacimiento"),
-		Number: v.GetString("numero"),
-	}
-	
-	client.SendBet(bet)
-	// client.StartClientLoop()
+	client.StartClientLoop()
+	client.Close()
 }

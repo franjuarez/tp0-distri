@@ -40,6 +40,7 @@ def create_compose(yaml_file, client_amnt):
       - CLI_ID={i}
     volumes:
       - ./client/config.yaml:/config.yaml
+      - ./.data/agency-{i}.csv:/data.csv
     networks:
       - testing_net
     depends_on:
