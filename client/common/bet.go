@@ -26,14 +26,14 @@ type BetReader struct {
 }
 
 func (b *Bet) Validate() error {
-	if len(b.FirstName) < 2 {
-		return fmt.Errorf("validation error: first name should be 2 or more characters long")
+	if len(b.FirstName) == 0 {
+		return fmt.Errorf("validation error: first name should be 1 or more characters long")
 	}
-	if len(b.LastName) < 2 {
-		return fmt.Errorf("validation error: last name should be 2 or more characters long")
+	if len(b.LastName) == 0 {
+		return fmt.Errorf("validation error: last name should be 1 or more characters long")
 	}
-	if len(b.Document) < 4 {
-		return fmt.Errorf("validation error: document should be 4 or more characters long")
+	if len(b.Document) != 8 {
+		return fmt.Errorf("validation error: document should be 8 characters long")
 	}
 	if _, err := time.Parse("2006-01-02", b.BirthDate.Format("2006-01-02")); err != nil {
 		return fmt.Errorf("validation error: birth day should be in the format YYYY-MM-DD")
@@ -41,7 +41,7 @@ func (b *Bet) Validate() error {
 	if b.BirthDate.IsZero() {
 		return fmt.Errorf("validation error: birth day should be valid")
 	}
-	if len(b.Number) < 1 {
+	if len(b.Number) == 0 {
 		return fmt.Errorf("validation error: bet number should be 1 or more characters long")
 	}
 	if _, err := strconv.Atoi(b.Number); err != nil {
