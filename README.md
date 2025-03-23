@@ -88,6 +88,77 @@ El mensaje `NACK` es un mensaje del servidor que representa un error en algun me
 
 ---
 
+## Ejercicio 7
+
+Para este punto se modifico el protocolo para tener en cuenta los nuevos mensajes, queda de esta forma:
+
+| Mensaje         | Código |
+|-----------------|--------|
+| NEW_BET         | 0      |
+| ACK             | 1      |
+| NEW_BETS_BATCH  | 2      |
+| NACK            | 3      |
+| BETS_FINISHED   | 4      |
+| ASK_WINNERS     | 5      |
+| WAIT_WINNERS    | 6      |
+| WINNERS_READY   | 7      |
+
+### 🔹 Flujo de Comunicación
+
+#### **Cliente**
+1. Envía todas las apuestas y luego manda `BETS_FINISHED`.
+2. Inmediatamente después, envía `ASK_WINNERS` para consultar los ganadores.
+3. Dependiendo de la respuesta del servidor:
+   - Si recibe `WAIT_WINNERS`, significa que aún no están listos los resultados. En este caso, el cliente espera 1 segundo y vuelve a preguntar.
+   - Si recibe `WINNERS_READY`, el servidor envía inmediatamente después la lista de DNIs de los ganadores de la agencia consultada.
+
+#### **Servidor**
+1. Recibe apuestas de cada cliente hasta que todos envíen `BETS_FINISHED`.
+2. Lleva un registro de qué clientes finalizaron sus envíos.
+3. Cuando ha recibido las apuestas de las 5 agencias, realiza el sorteo.
+4. Al recibir `ASK_WINNERS`:
+   - Responde con `WAIT_WINNERS` si el sorteo aún no se ha realizado.
+   - Responde con `WINNERS_READY` y envía la lista de DNIs ganadores cuando los resultados estén disponibles.
+
+---
+#### **🔹 Formato del mensaje `BETS_FINISHED`**
+El mensaje `BETS_FINISHED` es un mensaje del cliente que notifica al servidor de que este cliente termino de mandar todas las apuestas
+
+Tiene la siguiente estructura:
+
+| Campo                     | Tamaño (bytes) | Descripción                                      |
+|---------------------------|--------------- |--------------------------------------------------|
+| **Tipo**                  | 1              | Tipo de mensaje `BETS_FINISHED` = 7              |
+| **Nro de agencia**        | 1              | Numero de agencia del cliente                    |
+
+#### **🔹 Formato del mensaje `ASK_WINNERS`**
+El mensaje `ASK_WINNERS` es un mensaje del cliente que le pregunta al servidor por los ganadores del sorteo
+
+Tiene la siguiente estructura:
+
+| Campo                     | Tamaño (bytes) | Descripción                                      |
+|---------------------------|--------------- |--------------------------------------------------|
+| **Tipo**                  | 1              | Tipo de mensaje `ASK_WINNERS` = 7              |
+| **Nro de agencia**        | 1              | Numero de agencia del cliente                    |
+
+
+#### **🔹 Formato del mensaje `WAIT_WINNERS`**
+El mensaje `WAIT_WINNERS` es un mensaje del servidor que notifica al cliente de que los ganadores todavia no estan listos
+
+#### **🔹 Formato del mensaje `WINNERS_READY`**
+El mensaje `WINNERS_READY` es un mensaje del servidor que contiene la lista de DNIs ganadores correspondientes a la agencia del cliente que hizo la consulta
+
+Tiene la siguiente estructura:
+
+| Campo                     | Tamaño (bytes) | Descripción                                      |
+|---------------------------|--------------- |--------------------------------------------------|
+| **Tipo**                  | 1              | Tipo de mensaje `WINNERS_READY` = 7               |
+| **Cantidad de ganadores** | 2              | Numero de ganadores en el mensaje                |
+| **Ganadores**             | Variable       | Lista de DNIs de ganadores                       |
+
+Como los DNIs tienen siempre 8 caracteres, el servidor solamente manda la cantidad que hay y luego todos los DNIs seguidos. El cliente sabe que se leen de a 8 caracteres
+
+
 ## Consigna
 
 En el presente repositorio se provee un esqueleto básico de cliente/servidor, en donde todas las dependencias del mismo se encuentran encapsuladas en containers. Los alumnos deberán resolver una guía de ejercicios incrementales, teniendo en cuenta las condiciones de entrega descritas al final de este enunciado.
