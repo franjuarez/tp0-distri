@@ -34,18 +34,18 @@ El mensaje `NEW_BET` tiene la siguiente estructura:
 |---------------|---------------|--------------------------------------------------|
 | **Tipo**      | 1             | Tipo de mensaje (`1` = NEW_BET)               |
 | **Nro de agencia** | 1             | Numero de la agencia              |
-| **Long. Nombre**  | 1         | Longitud en bytes del campo Nombre              |
+| **Long. Nombre**  | 2         | Longitud en bytes del campo Nombre              |
 | **Nombre**    | L1            | Nombre de la persona                            |
-| **Long. Apellido** | 1        | Longitud en bytes del campo Apellido            |
+| **Long. Apellido** | 2        | Longitud en bytes del campo Apellido            |
 | **Apellido**  | L2            | Apellido de la persona                          |
-| **Long. Documento** | 1       | Longitud en bytes del campo Documento            |
+| **Long. Documento** | 2       | Longitud en bytes del campo Documento            |
 | **Documento**  | L3            | Documento de la persona                          |
-| **Long. Nacim.**  | 1         | Longitud en bytes del campo Nacimiento          |
+| **Long. Nacim.**  | 2         | Longitud en bytes del campo Nacimiento          |
 | **Nacimiento** | L4           | Fecha de nacimiento (AAAA-MM-DD)                |
-| **Long. Número**  | 1         | Longitud en bytes del campo Número              |
+| **Long. Número**  | 2         | Longitud en bytes del campo Número              |
 | **Número**    | L5            | Número de identificación                        |
 
-**Nota:** Se utilizo **1 bytes** para representar las longitudes de cada campo, permitiendo mensajes de hasta **255 bytes** de longitud, lo cual es suficiente para esta aplicación.
+**Nota:** Se utilizo **2 bytes** para representar las longitudes de cada campo, permitiendo mensajes de hasta **65k** de longitud, lo cual es suficiente para esta aplicación.
 
 ---
 
