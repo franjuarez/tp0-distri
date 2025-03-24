@@ -5,14 +5,13 @@ import sys
 from . import utils
 from .protocol import MessageType, Protocol
 
-AGENCIES = 5
-
 class Server:
-    def __init__(self, port, listen_backlog):
+    def __init__(self, port, listen_backlog, agency_number):
         # Initialize server socket
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind(('', port))
         self._server_socket.listen(listen_backlog)
+        self.agency_number = agency_number
         self.client_protocol = None
         self.clients_finished = set()
         self.winners = []
@@ -129,7 +128,7 @@ class Server:
             
             self.clients_finished.add(agency)
             
-            if len(self.clients_finished) == AGENCIES:
+            if len(self.clients_finished) == self.agency_number:
                 bets = utils.load_bets()
                 self.winners = [bet for bet in bets if utils.has_won(bet)]
                 

@@ -5,19 +5,6 @@ name: tp0
 services:
 """
 
-SERVER = """
-  server:
-    container_name: server
-    image: server:latest
-    entrypoint: python3 /main.py
-    environment:
-      - PYTHONUNBUFFERED=1
-    volumes:
-      - ./server/config.ini:/config.ini 
-    networks:
-      - testing_net
-"""
-
 NETWORKS = """
 networks:
   testing_net:
@@ -28,10 +15,23 @@ networks:
 """
 
 def create_compose(yaml_file, client_amnt):
-    compose_str = SKELETON + SERVER
+  server = f"""
+  server:
+    container_name: server
+    image: server:latest
+    entrypoint: python3 /main.py
+    environment:
+      - PYTHONUNBUFFERED=1
+      - SERVER_CLIENT_NUMBER={client_amnt}
+    volumes:
+      - ./server/config.ini:/config.ini 
+    networks:
+      - testing_net
+    """
+  compose_str = SKELETON + server
     
-    for i in range(1, client_amnt + 1):
-        compose_str += f"""
+  for i in range(1, client_amnt + 1):
+      compose_str += f"""
   client{i}:
     container_name: client{i}
     image: client:latest
@@ -46,13 +46,13 @@ def create_compose(yaml_file, client_amnt):
     depends_on:
       - server
 """
-    
-    compose_str += NETWORKS
-    
-    with open(yaml_file, "w") as file:
-        file.write(compose_str)
+  
+  compose_str += NETWORKS
+  
+  with open(yaml_file, "w") as file:
+      file.write(compose_str)
 
-    return
+  return
 
 def main():
     if len(sys.argv) != 3:
