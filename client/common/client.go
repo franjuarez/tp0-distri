@@ -67,19 +67,18 @@ func (c *Client) StartClientLoop() {
 	defer betsReader.Close()
 
 	for betsReader.hasNext() {
-		if err := c.createClientSocket(); err != nil { //TODO: change to 1 connection
-			log.Error("action: connect | result: fail | error: %v", err)
-			return
-		}
-
 		bets, err := betsReader.ReadBatchBets()
 		if err != nil {
-			c.Close()
 			if !errors.Is(err, io.EOF) {
 				log.Errorf("action: read_bets | result: fail | error: %v", err)
 				return
 			}
 			break
+		}
+		
+		if err := c.createClientSocket(); err != nil { //TODO: change to 1 connection
+			log.Error("action: connect | result: fail | error: %v", err)
+			return
 		}
 
 		err = c.protocol.SendBets(bets, c.config.ID)

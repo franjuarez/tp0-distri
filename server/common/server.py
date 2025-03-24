@@ -5,7 +5,7 @@ import sys
 from . import utils
 from .protocol import MessageType, Protocol
 
-AGENCIES = 1
+AGENCIES = 5
 
 class Server:
     def __init__(self, port, listen_backlog):
