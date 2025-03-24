@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -107,9 +108,15 @@ func main() {
 	// Print program config with debugging purposes
 	PrintConfig(v)
 
+	id := v.GetString("id")
+	idUint, err := strconv.ParseUint(id, 10, 8)
+	if err != nil {
+		log.Criticalf("action: parse id to uint | result: fail | client_id: %s | error: %v", id, err)
+	}
+
 	clientConfig := common.ClientConfig{
 		ServerAddress: v.GetString("server.address"),
-		ID:            v.GetString("id"),
+		ID:            uint8(idUint),
 		LoopAmount:    v.GetInt("loop.amount"),
 		LoopPeriod:    v.GetDuration("loop.period"),
 		BatchSize:     v.GetInt("batch.maxAmount"),

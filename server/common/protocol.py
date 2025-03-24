@@ -3,12 +3,18 @@ from enum import Enum
 
 AGENCY_SIZE = 1
 BATCH_SIZE = 2
+WINNERS_LIST_LEN = 2
+DNI_LEN = 8
 
 class MessageType(Enum):
     NEW_BET = 0
     ACK = 1
     NEW_BETS_BATCH = 2
     NACK = 3
+    BETS_FINISHED = 4
+    ASK_WINNERS = 5
+    WAIT_WINNERS = 6
+    WINNERS_READY = 7
 
 class Protocol:
     def __init__(self, client_socket):
@@ -68,9 +74,6 @@ class Protocol:
         """Lee y parsea un mensaje NEW_BET del cliente."""
         agency_number = self.__recv_all(1).decode("utf-8")
         bet = self.read_bet(agency_number)
-
-        print(f"agency: {agency_number}, name: {bet.name}, last name: {bet.last_name}, "
-            f"document: {bet.document}, birthday: {bet.birth_day}, number: {bet.number}")
         
         return bet
 
@@ -88,7 +91,25 @@ class Protocol:
             raise ValueError(f"Error al leer apuestas: {e}")
         except Exception as e:
             raise ValueError(f"Error inesperado al leer apuestas: {e}")
-        
+    
+    def read_bets_finished(self):
+        """Lee y parsea un mensaje BETS_FINISHED del cliente."""
+        return int.from_bytes(self.__recv_all(AGENCY_SIZE), "big")
+
+    def read_ask_winners(self):
+        """Lee y parsea un mensaje ASK_WINNERS del cliente."""
+        return int.from_bytes(self.__recv_all(AGENCY_SIZE), "big")
+
+    def send_winners(self, winners):
+        """Envía un mensaje WINNERS_READY al cliente."""
+        self.__send_all(MessageType.WINNERS_READY.value.to_bytes(1, "big"))
+        self.__send_all(len(winners).to_bytes(WINNERS_LIST_LEN, "big"))
+        for winner in winners:
+            self.__send_all(winner.encode("utf-8"))
+
+    def send_wait_winners(self):
+        """Envía un mensaje WAIT_WINNERS al cliente."""
+        self.__send_all(MessageType.WAIT_WINNERS.value.to_bytes(1, "big"))
 
     def send_ack(self):
         """Envía un mensaje ACK al cliente."""
