@@ -2,6 +2,7 @@ package common
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"time"
@@ -44,12 +45,7 @@ func NewClient(config ClientConfig) *Client {
 func (c *Client) createClientSocket() error {
 	conn, err := net.Dial("tcp", c.config.ServerAddress)
 	if err != nil {
-		log.Criticalf(
-			"action: connect | result: fail | client_id: %v | error: %v",
-			c.config.ID,
-			err,
-		)
-		return err
+		return fmt.Errorf("error connecting to server: %v", err)
 	}
 
 	protocol := NewProtocol(&conn)
@@ -188,5 +184,7 @@ func (c *Client) askForWinners() error {
 
 // closeClientSocket Closes the client socket
 func (c *Client) Close() {
-	c.protocol.Close()
+	if c.protocol != nil {
+		c.protocol.Close()
+	}
 }

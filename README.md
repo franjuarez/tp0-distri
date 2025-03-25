@@ -158,6 +158,12 @@ Tiene la siguiente estructura:
 
 Como los DNIs tienen siempre 8 caracteres, el servidor solamente manda la cantidad que hay y luego todos los DNIs seguidos. El cliente sabe que se leen de a 8 caracteres
 
+## Ejercicio 8
+
+Debido al cambio a un sistema para procesar en paralelo, se decidio usar la libreria `multiprocessing`. Para adaptarse a esta libreria, y mejorar el diseño del programa, se separo la logica del servidor de la de los clientes que este atiende. Ahora el servidor pasa principalmente a tener la responsabilidad de aceptar conexiones nuevas y matar conexiones viejas. Al aceptar las nuevas conexiones, el servidor crea un proceso con un Client, que tiene la responsabilidad de mantener las conexiones activas.
+
+Procesar en paralelo las requests de los clientes nos trae `race conditions`, ya que para procesar las requests se debe leer o escribir el archivo donde se guardan las apuestas, o sobre la loteria. Para poder solucionar el problema con el archivo donde se guardan las bets, se implemento un `Read Write Lock`, que permite múltiples lecturas concurrentes pero bloquea las escrituras mientras haya lectores o escritores activos. Para esto se usa una conditional variable que limita el acceso al archivo por parte de los diferentes procesos.
+Para solucionar el problema con la loteria se implemento un simple `Lock`, el cual no deja a mas de un proceso acceder a 
 
 ## Consigna
 

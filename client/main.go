@@ -137,5 +137,4 @@ func main() {
 	}()
 
 	client.StartClientLoop()
-	client.Close()
 }

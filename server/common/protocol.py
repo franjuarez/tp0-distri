@@ -1,4 +1,4 @@
-from common.utils import Bet
+from common.bets import Bet
 from enum import Enum
 
 AGENCY_SIZE = 1
@@ -104,6 +104,8 @@ class Protocol:
         """Envía un mensaje WINNERS_READY al cliente."""
         self.__send_all(MessageType.WINNERS_READY.value.to_bytes(1, "big"))
         self.__send_all(len(winners).to_bytes(WINNERS_LIST_LEN, "big"))
+
+        print("winners", winners)
         for winner in winners:
             self.__send_all(winner.encode("utf-8"))
 
