@@ -160,10 +160,11 @@ Como los DNIs tienen siempre 8 caracteres, el servidor solamente manda la cantid
 
 ## Ejercicio 8
 
-Debido al cambio a un sistema para procesar en paralelo, se decidio usar la libreria `multiprocessing`. Para adaptarse a esta libreria, y mejorar el diseño del programa, se separo la logica del servidor de la de los clientes que este atiende. Ahora el servidor pasa principalmente a tener la responsabilidad de aceptar conexiones nuevas y matar conexiones viejas. Al aceptar las nuevas conexiones, el servidor crea un proceso con un Client, que tiene la responsabilidad de mantener las conexiones activas.
+Debido a la transición hacia un sistema de procesamiento en paralelo, se optó por utilizar la librería `multiprocessing`. Para adaptarse a esta librería y mejorar el diseño del programa, se separó la lógica del servidor de la de los clientes que atiende. Ahora, el servidor se encarga principalmente de aceptar nuevas conexiones. Al recibir estas conexiones, el servidor crea un proceso por cada cliente, siendo este responsable de intercambiar los mensajes con el cliente.
 
-Procesar en paralelo las requests de los clientes nos trae `race conditions`, ya que para procesar las requests se debe leer o escribir el archivo donde se guardan las apuestas, o sobre la loteria. Para poder solucionar el problema con el archivo donde se guardan las bets, se implemento un `Read Write Lock`, que permite múltiples lecturas concurrentes pero bloquea las escrituras mientras haya lectores o escritores activos. Para esto se usa una conditional variable que limita el acceso al archivo por parte de los diferentes procesos.
-Para solucionar el problema con la loteria se implemento un simple `Lock`, el cual no deja a mas de un proceso acceder a 
+El procesamiento en paralelo de las solicitudes de los clientes introduce posibles `race conditions`, ya que para procesar las solicitudes es necesario leer o escribir en el archivo donde se almacenan las apuestas, así como en la información relacionada con la lotería. Para abordar el problema relacionado con el archivo de las apuestas, se implementó un `Read-Write Lock`, que permite múltiples lecturas concurrentes, pero bloquea las escrituras cuando hay lectores o escritores activos. Esto se logra mediante una conditional variable que limita el acceso al archivo entre los diferentes procesos.
+
+En cuanto al acceso a la variable compartida de la lotería, se implementó un `Lock` sencillo, el cual asegura que no más de un proceso pueda acceder a esta variable de manera simultánea.
 
 ## Consigna
 
