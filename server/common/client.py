@@ -6,7 +6,6 @@ class Client():
         self.client_protocol = Protocol(socket)
         self.lottery = lottery
         self.bets_file = bets_file
-        # TODO: cuando sea 1 conexion puedo pasar al principio de todo el nro de client y me lo guardo
 
     def run(self):
         """
@@ -15,7 +14,6 @@ class Client():
         try:
             while True:
                 self.__read_new_message()
-                # TODO: Ahora falla porque el cliente cierra la conexion y no se maneja bien aca. Mejorar manejo de errores para que no me haga problema
         except ConnectionResetError as e:
             logging.error("error: connection closed by client")
         except Exception as e:

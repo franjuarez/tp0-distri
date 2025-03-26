@@ -56,10 +56,16 @@ class Server:
                     self.clients.append(client)
                     self.clients_processes.append(p)
         except OSError as e:
-            client.stop()
+            try:
+                client.stop()
+            except Exception as e:
+                logging.error(f"action: stop_server | result: fail | error: {e}")
             logging.info(f"server stopped")
         except Exception as e:
-            client.stop()
+            try:
+                client.stop()
+            except Exception as e:
+                logging.error(f"action: stop_server | result: fail | error: {e}")
             logging.error(f"action: accept_connection | result: fail | unexpected error: {e}")
 
     def __accept_new_connection(self):
