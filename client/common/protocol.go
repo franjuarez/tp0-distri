@@ -130,7 +130,6 @@ func (p *Protocol) SendBets(betReader IBetReader, agencyId uint8) error {
 		bets, err := betReader.ReadBatchBets()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
-				fmt.Println("EOF")
 				break
 			}
 			return fmt.Errorf("error reading bets: %w", err)

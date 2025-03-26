@@ -43,7 +43,7 @@ class Lottery():
 
     def are_winner_ready(self):
         """ Returns whether the winners are ready or not. """
-        with self.finished_lock: #TODO: ver de sacar el lock
+        with self.finished_lock:
             print(f"WR: Finished agencies: {self.finished_agencies}, number: {self.agency_number}")
             return len(self.finished_agencies) == self.agency_number
 

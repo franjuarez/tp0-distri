@@ -101,8 +101,6 @@ func (c *Client) StartClientLoop() {
 		return
 	}
 	
-	fmt.Println("Notified all bets sent")
-	
 	if err := c.askForWinners(); err != nil {
 		log.Errorf("action: ganadores | result: fail | client_id: %v | error: %v",
 			c.config.ID,
@@ -125,9 +123,7 @@ func (c *Client) askForWinners() error {
 			c.Close()
 			return err
 		}
-
-		fmt.Println("Sent winners request")
-
+		
 		answer, err := c.protocol.RecvWinnersAnswer()
 		if err != nil {
 			log.Errorf("action: winners_received | result: fail | client_id: %v | error: %v",

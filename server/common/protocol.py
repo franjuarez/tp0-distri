@@ -92,7 +92,6 @@ class Protocol:
             while True:
                 msg = self.read_new_message()
                 if msg == MessageType.EOF:
-                    print("EOF")
                     break
                 elif msg == MessageType.NEW_BETS_BATCH:
                     bets.extend(self.__read_bets_batch(agency_number))

@@ -5,7 +5,7 @@ import csv
 class BetsFileMonitor:
     def __init__(self, file_path):
         self.file_path = file_path
-        self.readers = Value('i', 0) #TODO: cambiar por un numero
+        self.readers = Value('i', 0)
         self.lock = Lock()
         self.read_ready = Condition(self.lock)
 

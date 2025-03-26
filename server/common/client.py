@@ -28,7 +28,6 @@ class Client():
         """Lee el tipo de mensaje y maneja NEW_BET."""
         try: 
             msg_type = self.client_protocol.read_new_message()
-            print("got message", msg_type)
             
             if msg_type == MessageType.NEW_BET:
                 self.__handle_new_bet_message()
@@ -70,12 +69,12 @@ class Client():
             self.client_protocol.send_nack()
 
     def __handle_new_bets_finished_message(self):
-        agency = self.client_protocol.read_bets_finished() #TODO: volar cuando tenga 1 conex por client
+        agency = self.client_protocol.read_bets_finished()
 
         self.lottery.agency_finish(agency)
 
     def __handle_ask_winners_message(self):
-        agency = self.client_protocol.read_ask_winners() #TODO: volar
+        agency = self.client_protocol.read_ask_winners()
 
         if not self.lottery.are_winner_ready():
             self.client_protocol.send_wait_winners()
