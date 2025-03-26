@@ -25,6 +25,11 @@ type BetReader struct {
 	batchSize int
 }
 
+type IBetReader interface {
+	ReadBatchBets() ([]Bet, error)
+	hasNext() bool
+}
+
 func (b *Bet) Validate() error {
 	if len(b.FirstName) == 0 {
 		return fmt.Errorf("validation error: first name should be 1 or more characters long")

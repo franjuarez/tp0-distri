@@ -166,6 +166,34 @@ El procesamiento en paralelo de las solicitudes de los clientes introduce posibl
 
 En cuanto al acceso a la variable compartida de la lotería, se implementó un `Lock` sencillo, el cual asegura que no más de un proceso pueda acceder a esta variable de manera simultánea.
 
+Al ahora ser paralelo, se decidio modificar el protocolo para que el cliente no tenga que abrir conexiones nuevas, y pueda simplemente tener 1 abierta con el servidor y mandar todo por alli.
+
+El unico flujo que cambia es el de `NEW_BETS_BATCH`, ya que ahora, en caso de que maxBatchAmount sea mas pesado que 8Kb, se mandara todas las bets en 1 mensaje pero en paquetes de 8Kb como maximo. Ahora pasa a tener esta estructura:
+
+| Campo                | Tamaño (bytes) | Descripción                                      |
+|----------------------|--------------- |--------------------------------------------------|
+| **Tipo**                 | 1              | Tipo de mensaje (`3` = NEW_BETS_BATCH)           |
+| **Nro de agencia**       | 1              | Numero de la agencia                             |
+| **Cant de apuestas** | 2              | Numero apuestas en el mensaje                    |
+| **Bets**                 | Variable       | Secuencia de apuestas en el formato de `NEW_BET` |
+| **Tipo**                | 1              |  `NEW_BETS_BATCH` si quedan mas apuestas o `EOF` si no hay mas   |
+
+De esta forma el servidor lee la cantidad de apuestas mandadas en el primer mensaje y luego lee si vienen mas apuestas o si terminaron.
+
+Al agregar el mensaje EOF, el protocolo quedaria asi:
+
+| Mensaje         | Código |
+|-----------------|--------|
+| NEW_BET         | 0      |
+| ACK             | 1      |
+| NEW_BETS_BATCH  | 2      |
+| NACK            | 3      |
+| BETS_FINISHED   | 4      |
+| ASK_WINNERS     | 5      |
+| WAIT_WINNERS    | 6      |
+| WINNERS_READY   | 7      |
+| EOF             | 8      |
+
 ## Consigna
 
 En el presente repositorio se provee un esqueleto básico de cliente/servidor, en donde todas las dependencias del mismo se encuentran encapsuladas en containers. Los alumnos deberán resolver una guía de ejercicios incrementales, teniendo en cuenta las condiciones de entrega descritas al final de este enunciado.

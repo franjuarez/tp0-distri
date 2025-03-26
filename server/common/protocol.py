@@ -15,6 +15,7 @@ class MessageType(Enum):
     ASK_WINNERS = 5
     WAIT_WINNERS = 6
     WINNERS_READY = 7
+    EOF = 8
 
 class Protocol:
     def __init__(self, client_socket):
@@ -26,7 +27,7 @@ class Protocol:
         while len(data) < size:
             pkt = self.client_socket.recv(size - len(data))
             if len(pkt) == 0:
-                raise OSError("Couldn't receive all data")
+                raise ConnectionResetError("Connection closed")
             data += pkt
 
         return data
@@ -35,7 +36,7 @@ class Protocol:
         while len(data) > 0:
             sent = self.client_socket.send(data)
             if sent == 0:
-                raise OSError("Couldn't send all data")
+                raise ConnectionResetError("Connection closed")
             data = data[sent:]
 
     def read_new_message(self):
@@ -77,16 +78,29 @@ class Protocol:
         
         return bet
 
+    def __read_bets_batch(self, agency_number):
+        """Lee y parsea un mensaje NEW_BETS_BATCH del cliente."""
+        size = int.from_bytes(self.__recv_all(BATCH_SIZE), "big")
+        return [self.read_bet(agency_number) for _ in range(size)]
 
     def read_new_bets_batch(self):
         """Lee y parsea un mensaje NEW_BETS_BATCH del cliente."""
         try:
             agency_number = int.from_bytes(self.__recv_all(AGENCY_SIZE), "big")
-            size = int.from_bytes(self.__recv_all(BATCH_SIZE), "big")
-            bets = []
-            for _ in range(size):
-                bets.append(self.read_bet(agency_number))
+            
+            bets = self.__read_bets_batch(agency_number)
+            while True:
+                msg = self.read_new_message()
+                if msg == MessageType.EOF:
+                    print("EOF")
+                    break
+                elif msg == MessageType.NEW_BETS_BATCH:
+                    bets.extend(self.__read_bets_batch(agency_number))
+                else:
+                    raise ValueError(f"Unexpected message type when reading bets batch: {msg}")
+
             return bets
+        
         except ValueError as e: 
             raise ValueError(f"Error al leer apuestas: {e}")
         except Exception as e:
@@ -105,7 +119,6 @@ class Protocol:
         self.__send_all(MessageType.WINNERS_READY.value.to_bytes(1, "big"))
         self.__send_all(len(winners).to_bytes(WINNERS_LIST_LEN, "big"))
 
-        print("winners", winners)
         for winner in winners:
             self.__send_all(winner.encode("utf-8"))
 

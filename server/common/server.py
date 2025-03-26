@@ -44,23 +44,23 @@ class Server:
         bets_file = self.manager.BetsFileMonitor(STORAGE_FILEPATH)
         lottery = self.manager.Lottery(self.agency_number, bets_file)
 
-        while True:
-            try:
-                client_sock = self.__accept_new_connection()
-                
-                client = Client(client_sock, bets_file, lottery)
-                
-                p = Process(target=client.run)
-                p.start()
+        try:
+            while True:
+                    client_sock = self.__accept_new_connection()
+                    
+                    client = Client(client_sock, bets_file, lottery)
+                    
+                    p = Process(target=client.run)
+                    p.start()
 
-                self.clients.append(client)
-                self.clients_processes.append(p)
-
-                #TODO: si no tengo 1 conex por agencia, hacer pool de processes
-
-            except Exception as e:
-                client.stop()
-                logging.error(f"action: accept_connection | result: fail | unexpected error: {e}")
+                    self.clients.append(client)
+                    self.clients_processes.append(p)
+        except OSError as e:
+            client.stop()
+            logging.info(f"server stopped")
+        except Exception as e:
+            client.stop()
+            logging.error(f"action: accept_connection | result: fail | unexpected error: {e}")
 
     def __accept_new_connection(self):
         """
@@ -77,14 +77,17 @@ class Server:
         return c
 
     def stop(self):
-        self._server_socket.close()
-        for client in self.clients:
-            client.stop()
-        for p in self.clients_processes:
-            p.join()
+        try:
+            self._server_socket.close()
+            for client in self.clients:
+                client.stop()
+            for p in self.clients_processes:
+                p.terminate()
+                p.join()
+        except OSError as e:
+            return
 
     def __stop_signal_handler(self, sig, frame):
         self.stop()
         logging.info(f"action: signal_handler | result: success | signal: {sig}")
-        sys.exit()
 

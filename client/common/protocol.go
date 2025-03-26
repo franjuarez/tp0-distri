@@ -2,7 +2,9 @@ package common
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
+	"io"
 	"net"
 )
 
@@ -19,6 +21,7 @@ const (
 	MSG_ASK_WINNERS
 	MSG_WAIT_WINNERS
 	MSG_WINNERS_READY
+	MSG_EOF
 )
 
 type Protocol struct {
@@ -118,40 +121,58 @@ func (p *Protocol) SendBet(bet Bet, agencyId uint8) error {
 	return nil
 }
 
-func (p *Protocol) SendBets(bets []Bet, agencyId uint8) error {
+func (p *Protocol) SendBets(betReader IBetReader, agencyId uint8) error {
 	msg := make([]byte, 0)
 	msg = append(msg, MSG_NEW_BETS_BATCH)
 	msg = append(msg, agencyId)
 
-	amountBytes := make([]byte, 2)
-	binary.BigEndian.PutUint16(amountBytes, uint16(len(bets)))
-	msg = append(msg, amountBytes...)
-
-	if err := p.sendAll(msg); err != nil {
-		return fmt.Errorf("error sending message: %w", err)
-	}
-
-	var batch []byte
-	for _, bet := range bets {
-		betMsg, err := p.createBetMessage(bet)
+	for betReader.hasNext() {
+		bets, err := betReader.ReadBatchBets()
 		if err != nil {
-			return fmt.Errorf("error creating bet message: %w", err)
+			if errors.Is(err, io.EOF) {
+				fmt.Println("EOF")
+				break
+			}
+			return fmt.Errorf("error reading bets: %w", err)
 		}
 
-		if len(batch)+len(betMsg) > maxBatchSize {
+		amountBytes := make([]byte, 2)
+		binary.BigEndian.PutUint16(amountBytes, uint16(len(bets)))
+		msg = append(msg, amountBytes...)
+
+		if err := p.sendAll(msg); err != nil {
+			return fmt.Errorf("error sending message: %w", err)
+		}
+
+		var batch []byte
+		for _, bet := range bets {
+			betMsg, err := p.createBetMessage(bet)
+			if err != nil {
+				return fmt.Errorf("error creating bet message: %w", err)
+			}
+
+			if len(batch)+len(betMsg) > maxBatchSize {
+				if err := p.sendAll(batch); err != nil {
+					return fmt.Errorf("error sending batch message: %w", err)
+				}
+				batch = make([]byte, 0)
+			}
+
+			batch = append(batch, betMsg...)
+		}
+
+		if len(batch) > 0 {
 			if err := p.sendAll(batch); err != nil {
 				return fmt.Errorf("error sending batch message: %w", err)
 			}
-			batch = make([]byte, 0)
 		}
 
-		batch = append(batch, betMsg...)
+		msg = make([]byte, 0)
+		msg = append(msg, MSG_NEW_BETS_BATCH)
 	}
 
-	if len(batch) > 0 {
-		if err := p.sendAll(batch); err != nil {
-			return fmt.Errorf("error sending batch message: %w", err)
-		}
+	if err := p.sendAll([]byte{MSG_EOF}); err != nil {
+		return fmt.Errorf("error sending EOF message: %w", err)
 	}
 
 	return nil

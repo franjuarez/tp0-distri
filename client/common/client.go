@@ -1,9 +1,7 @@
 package common
 
 import (
-	"errors"
 	"fmt"
-	"io"
 	"net"
 	"time"
 
@@ -62,52 +60,35 @@ func (c *Client) StartClientLoop() {
 	}
 	defer betsReader.Close()
 
-	for betsReader.hasNext() {
-		bets, err := betsReader.ReadBatchBets()
-		if err != nil {
-			if !errors.Is(err, io.EOF) {
-				log.Errorf("action: read_bets | result: fail | error: %v", err)
-				return
-			}
-			break
-		}
-		
-		if err := c.createClientSocket(); err != nil { //TODO: change to 1 connection
-			log.Error("action: connect | result: fail | error: %v", err)
-			return
-		}
-
-		err = c.protocol.SendBets(bets, c.config.ID)
-		if err != nil {
-			log.Errorf("action: apuesta_enviada | result: fail | client_id: %v | error: %v",
-				c.config.ID,
-				err,
-			)
-			c.Close()
-			return
-		}
-
-		answer, err := c.protocol.RecvAnswer()
-		if err != nil {
-			log.Errorf("action: respuesta_recibida | result: fail | client_id: %v | error: %v",
-				c.config.ID,
-				err,
-			)
-			c.Close()
-			return
-		}
-
-		if answer == MSG_ACK {
-			log.Infof("action: apuesta_enviada | result: success | cantidad: %v", len(bets))
-		} else {
-			log.Infof("action: apuesta_enviada | result: fail | cantidad: %v", len(bets))
-		}
-
-		c.Close()
-	}
-
 	if err := c.createClientSocket(); err != nil {
 		log.Error("action: connect | result: fail | error: %v", err)
+		return
+	}
+
+	err = c.protocol.SendBets(betsReader, c.config.ID)
+	if err != nil {
+		log.Errorf("action: apuesta_enviada | result: fail | client_id: %v | error: %v",
+			c.config.ID,
+			err,
+		)
+		c.Close()
+		return
+	}
+
+	answer, err := c.protocol.RecvAnswer()
+	if err != nil {
+		log.Errorf("action: respuesta_recibida | result: fail | client_id: %v | error: %v",
+			c.config.ID,
+			err,
+		)
+		c.Close()
+		return
+	}
+
+	if answer == MSG_ACK {
+		log.Infof("action: apuesta_enviada | result: success")
+	} else {
+		log.Errorf("action: apuesta_enviada | result: fail | answer: %v", answer)
 		return
 	}
 	
@@ -120,7 +101,7 @@ func (c *Client) StartClientLoop() {
 		return
 	}
 	
-	c.Close()
+	fmt.Println("Notified all bets sent")
 	
 	if err := c.askForWinners(); err != nil {
 		log.Errorf("action: ganadores | result: fail | client_id: %v | error: %v",
@@ -135,11 +116,6 @@ func (c *Client) StartClientLoop() {
 
 func (c *Client) askForWinners() error {
 	for {
-		if err := c.createClientSocket(); err != nil {
-			log.Error("action: connect | result: fail | error: %v", err)
-			return err
-		}
-
 		err := c.protocol.SendWinnersRequest(c.config.ID)
 		if err != nil {
 			log.Errorf("action: winners_request | result: fail | client_id: %v | error: %v",
@@ -149,6 +125,8 @@ func (c *Client) askForWinners() error {
 			c.Close()
 			return err
 		}
+
+		fmt.Println("Sent winners request")
 
 		answer, err := c.protocol.RecvWinnersAnswer()
 		if err != nil {
@@ -175,7 +153,6 @@ func (c *Client) askForWinners() error {
 		}
 
 		time.Sleep(1 * time.Second)
-		c.Close()
 	}
 
 	c.Close()

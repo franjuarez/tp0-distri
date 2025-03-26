@@ -12,15 +12,19 @@ class Client():
         """
         runs the client, receiving messages and handling them
         """
-        # TODO: Add while loop to keep the client alive
         try:
-            self.__read_new_message()
-        except OSError as e:
-            logging.error("action: receive_message | result: fail | error: {}".format(e))
+            while True:
+                self.__read_new_message()
+                # TODO: Ahora falla porque el cliente cierra la conexion y no se maneja bien aca. Mejorar manejo de errores para que no me haga problema
+        except ConnectionResetError as e:
+            logging.error("error: connection closed by client")
         except Exception as e:
-            logging.error("action: receive_message or send_message | result: fail | unexpected error: {}".format(e))
+                logging.error(f"unexpected error: {e}")
         finally:
-            self.client_protocol.close()
+                try:
+                    self.stop()
+                except Exception as e:
+                    logging.error(f"action: stop_client | result: fail | error: {e}")
     
     def __read_new_message(self):
         """Lee el tipo de mensaje y maneja NEW_BET."""
@@ -37,12 +41,10 @@ class Client():
             elif msg_type == MessageType.ASK_WINNERS:
                 self.__handle_ask_winners_message()
             else:
-                raise ValueError(f"Unexpected message type:{msg_type}")
+                logging.error("unknown message type")
         
         except ValueError as e:
-            logging.error(f"action: receive_message | result: fail | error: {e}")
-        except Exception as e:
-            logging.error(f"action: receive_message | result: fail | unexpected error: {e}")
+            logging.error(f"action: receive_message | result: fail | unknow message: {e}")
 
     def __handle_new_bet_message(self):
         try:
@@ -55,51 +57,35 @@ class Client():
         except ValueError as e:
             logging.error(f"action: apuesta_almacenada | result: fail")
             logging.error(f"error: {e}")
+            self.client_protocol.send_nack()
 
     def __handle_new_bets_batch_message(self):
         try:
-
             bets = self.client_protocol.read_new_bets_batch()
             self.bets_file.store_bets(bets)
             self.client_protocol.send_ack()
             logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
 
-        except Exception as e:
+        except ValueError as e:
             logging.error(f"action: apuesta_recibida | result: fail | cantidad: {len(bets) if 'bets_data' in locals() else 0}")
             logging.error(f"error: {e}")
-            try:
-                self.client_protocol.send_nack()
-            except Exception as nack_error:
-                logging.error(f"action: send_nack | result: fail | error: {nack_error}")
+            self.client_protocol.send_nack()
 
     def __handle_new_bets_finished_message(self):
-        try:
+        agency = self.client_protocol.read_bets_finished() #TODO: volar cuando tenga 1 conex por client
 
-            agency = self.client_protocol.read_bets_finished() #TODO: volar cuando tenga 1 conex por client
-
-            self.lottery.agency_finish(agency)
-
-        except Exception as e:
-            logging.error("action: apuestas_finalizadas | result: fail")
-            logging.error(f"error: {e}")
+        self.lottery.agency_finish(agency)
 
     def __handle_ask_winners_message(self):
-        try:
-            agency = self.client_protocol.read_ask_winners() #TODO: volar
+        agency = self.client_protocol.read_ask_winners() #TODO: volar
 
-            if not self.lottery.are_winner_ready():
-                self.client_protocol.send_wait_winners()
-                return
-            
-            agency_winners = self.lottery.get_winners_for_agency(agency)
-
-            self.client_protocol.send_winners(agency_winners)
-
-            logging.info("action: ask_winners | result: success")
-
-        except Exception as e:
-            logging.error("action: ask_winners | result: fail")
-            logging.error(f"error: {e}")
+        if not self.lottery.are_winner_ready():
+            self.client_protocol.send_wait_winners()
+            return
+        
+        agency_winners = self.lottery.get_winners_for_agency(agency)
+        self.client_protocol.send_winners(agency_winners)
+        logging.info("action: ask_winners | result: success")
 
     def stop(self):
         try:
