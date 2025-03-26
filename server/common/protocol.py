@@ -6,6 +6,7 @@ from . import utils
 class MessageType(Enum):
     NEW_CLIENT = 0
     ACK = 1
+    NACK = 3
 
 class Protocol:
     def __init__(self, client_socket):
@@ -23,6 +24,10 @@ class Protocol:
     def send_ack(self):
         """Envía un mensaje ACK al cliente."""
         self.client_socket.sendall(MessageType.ACK.value.to_bytes(1, "big"))
+
+    def send_nack(self):
+        """Envía un mensaje ACK al cliente."""
+        self.client_socket.sendall(MessageType.NACK.value.to_bytes(1, "big"))
     
     def read_new_client_bet(self):
         """Lee y parsea un mensaje NEW_BET del cliente."""

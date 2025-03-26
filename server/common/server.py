@@ -21,12 +21,25 @@ class Server:
         finishes, servers starts to accept new connections again
         """
 
-        signal.signal(signal.SIGTERM, self.__signal_handler)
+        signal.signal(signal.SIGTERM, self.__stop_signal_handler)
 
-        while True:
-            client_sock = self.__accept_new_connection()
-            protocol = Protocol(client_sock)
-            self.__handle_client_connection(protocol)
+        try:
+            while True:
+                    client_sock = self.__accept_new_connection()
+                    self.client_protocol = Protocol(client_sock)
+                    self.__handle_client_connection()
+        except OSError as e:
+            try:
+                self.stop()
+            except Exception as e:
+                logging.error(f"action: stop_server | result: fail | error: {e}")
+            logging.info(f"server stopped")
+        except Exception as e:
+            try:
+                self.stop()
+            except Exception as e:
+                logging.error(f"action: stop_server | result: fail | error: {e}")
+            logging.error(f"action: accept_connection | result: fail | unexpected error: {e}")
 
     def stop(self):
         self._server_socket.close()
@@ -36,10 +49,14 @@ class Server:
         msg_type = protocol.read_new_message()
         
         if msg_type == MessageType.NEW_CLIENT:
-            bet_data = protocol.read_new_client_bet()
-            utils.store_bets([bet_data])
-            protocol.send_ack()
-            logging.info(f'action: apuesta_almacenada | result: success | dni: {bet_data.document} | numero: {bet_data.number}')
+            try:
+                bet_data = protocol.read_new_client_bet()
+                utils.store_bets([bet_data])
+                protocol.send_ack()
+                logging.info(f'action: apuesta_almacenada | result: success | dni: {bet_data.document} | numero: {bet_data.number}')
+            except Exception as e:
+                logging.error(f'action: apuesta_almacenada | result: fail | error: {e}')
+                protocol.send_nack()
         else:
             raise ValueError(f"Unexpected message type:{msg_type}")
 
@@ -74,7 +91,6 @@ class Server:
         logging.info(f'action: accept_connections | result: success | ip: {addr[0]}')
         return c
     
-    def __signal_handler(self, sig, frame):
+    def __stop_signal_handler(self, sig, frame):
         self.stop()
         logging.info(f"action: signal_handler | result: success | signal: {sig}")
-        sys.exit()

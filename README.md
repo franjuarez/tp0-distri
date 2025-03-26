@@ -1,5 +1,6 @@
 # TP0: Docker + Comunicaciones + Concurrencia
 
+
 ## Ejercicio 5
 
 Para este ejercicio se tuvo que crear un protocolo de comunicaion. Se detallara a continuacion.
@@ -18,10 +19,11 @@ El protocolo contempla los siguientes tipos de mensajes:
 |----------------|--------|
 | NEW_BET        | 0      |
 | ACK            | 1      |
+| NACK           | 3      |
 
 El flujo principal del programa es el siguiente:
 1. **El cliente envía** los datos de una/s persona/s para registrar una/s apuesta/s.
-2. **El servidor procesa la solicitud y devuelve** una confirmación (ACK).
+2. **El servidor procesa la solicitud y devuelve** una confirmación (ACK) o NACK en caso de que no haya sido exitoso.
 
 ---
 
@@ -34,23 +36,27 @@ El mensaje `NEW_BET` tiene la siguiente estructura:
 |---------------|---------------|--------------------------------------------------|
 | **Tipo**      | 1             | Tipo de mensaje (`1` = NEW_BET)               |
 | **Nro de agencia** | 1             | Numero de la agencia              |
-| **Long. Nombre**  | 2         | Longitud en bytes del campo Nombre              |
+| **Long. Nombre**  | 1         | Longitud en bytes del campo Nombre              |
 | **Nombre**    | L1            | Nombre de la persona                            |
-| **Long. Apellido** | 2        | Longitud en bytes del campo Apellido            |
+| **Long. Apellido** | 1        | Longitud en bytes del campo Apellido            |
 | **Apellido**  | L2            | Apellido de la persona                          |
-| **Long. Documento** | 2       | Longitud en bytes del campo Documento            |
+| **Long. Documento** | 1       | Longitud en bytes del campo Documento            |
 | **Documento**  | L3            | Documento de la persona                          |
-| **Long. Nacim.**  | 2         | Longitud en bytes del campo Nacimiento          |
+| **Long. Nacim.**  | 1         | Longitud en bytes del campo Nacimiento          |
 | **Nacimiento** | L4           | Fecha de nacimiento (AAAA-MM-DD)                |
-| **Long. Número**  | 2         | Longitud en bytes del campo Número              |
+| **Long. Número**  | 1         | Longitud en bytes del campo Número              |
 | **Número**    | L5            | Número de identificación                        |
 
-**Nota:** Se utilizo **2 bytes** para representar las longitudes de cada campo, permitiendo mensajes de hasta **65k** de longitud, lo cual es suficiente para esta aplicación.
+**Nota:** Se utilizo **1 bytes** para representar las longitudes de cada campo, permitiendo mensajes de hasta **255 bytes** de longitud, lo cual es suficiente para esta aplicación.
 
 ---
 
 #### **🔹 Formato del mensaje `ACK`**
 El mensaje `ACK` es una simple confirmación del servidor.
+
+#### **🔹 Formato del mensaje `NACK`**
+El mensaje `NACK` es un mensjae del servidor que indica que no salio como esperado.
+
 ## Consigna
 
 En el presente repositorio se provee un esqueleto básico de cliente/servidor, en donde todas las dependencias del mismo se encuentran encapsuladas en containers. Los alumnos deberán resolver una guía de ejercicios incrementales, teniendo en cuenta las condiciones de entrega descritas al final de este enunciado.
