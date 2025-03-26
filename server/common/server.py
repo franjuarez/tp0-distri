@@ -1,7 +1,6 @@
 import socket
 import logging
 import signal
-import sys
 from .protocol import MessageType, Protocol
 from . import utils
 
@@ -26,8 +25,8 @@ class Server:
         try:
             while True:
                     client_sock = self.__accept_new_connection()
-                    self.client_protocol = Protocol(client_sock)
-                    self.__handle_client_connection()
+                    client_protocol = Protocol(client_sock)
+                    self.__handle_client_connection(client_protocol)
         except OSError as e:
             try:
                 self.stop()
