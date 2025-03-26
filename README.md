@@ -18,10 +18,11 @@ El protocolo contempla los siguientes tipos de mensajes:
 |----------------|--------|
 | NEW_BET        | 0      |
 | ACK            | 1      |
+| NACK           | 3      |
 
 El flujo principal del programa es el siguiente:
 1. **El cliente envía** los datos de una/s persona/s para registrar una/s apuesta/s.
-2. **El servidor procesa la solicitud y devuelve** una confirmación (ACK).
+2. **El servidor procesa la solicitud y devuelve** una confirmación (ACK) o NACK en caso de que no haya sido exitoso.
 
 ---
 
@@ -52,6 +53,9 @@ El mensaje `NEW_BET` tiene la siguiente estructura:
 #### **🔹 Formato del mensaje `ACK`**
 El mensaje `ACK` es una simple confirmación del servidor.
 
+#### **🔹 Formato del mensaje `NACK`**
+El mensaje `NACK` es un mensjae del servidor que indica que no salio como esperado.
+
 ## Ejercicio 6
 
 Se modifico el protocolo, quedando de esta manera: 
@@ -80,11 +84,6 @@ El mensaje `NEW_BETS_BATCH` tiene la siguiente estructura:
 Cada apuesta dentro del batch sigue el mismo formato que el mensaje NEW_BET, sin incluir ni el campo Tipo ni Agencia nuevamente.
 
 **Nota:** Se utilizaron **2 bytes** para representar la cantidad de bets, permitiendo mandar hasta **65.535** apuestas, lo cual es suficiente para esta aplicación.
-
----
-
-#### **🔹 Formato del mensaje `NACK`**
-El mensaje `NACK` es un mensaje del servidor que representa un error en algun mensaje mandado por parte del cliente
 
 ---
 

@@ -21,15 +21,25 @@ class Server:
         communication with a client. After client with communucation
         finishes, servers starts to accept new connections again
         """
-        signal.signal(signal.SIGTERM, self.__signal_handler)
+        signal.signal(signal.SIGTERM, self.__stop_signal_handler)
 
-        while True:
+        try:
+            while True:
+                    client_sock = self.__accept_new_connection()
+                    self.client_protocol = Protocol(client_sock)
+                    self.__handle_client_connection()
+        except OSError as e:
             try:
-                client_sock = self.__accept_new_connection()
-                self.client_protocol = Protocol(client_sock)
-                self.__handle_client_connection()
+                self.stop()
             except Exception as e:
-                logging.error(f"action: accept_connection | result: fail | unexpected error: {e}")
+                logging.error(f"action: stop_server | result: fail | error: {e}")
+            logging.info(f"server stopped")
+        except Exception as e:
+            try:
+                self.stop()
+            except Exception as e:
+                logging.error(f"action: stop_server | result: fail | error: {e}")
+            logging.error(f"action: accept_connection | result: fail | unexpected error: {e}")
 
     def stop(self):
         self._server_socket.close()
@@ -70,16 +80,20 @@ class Server:
         """Lee el tipo de mensaje y maneja NEW_BET."""
         try: 
             msg_type = self.client_protocol.read_new_message()
+            
             if msg_type == MessageType.NEW_BET:
                 self.__handle_new_bet_message()
             elif msg_type == MessageType.NEW_BETS_BATCH:
                 self.__handle_new_bets_batch_message()
+            elif msg_type == MessageType.BETS_FINISHED:
+                self.__handle_new_bets_finished_message()
+            elif msg_type == MessageType.ASK_WINNERS:
+                self.__handle_ask_winners_message()
             else:
-                raise ValueError(f"Unexpected message type:{msg_type}")
+                print(f"Tipo de mensaje desconocido: {msg_type}")
+        
         except ValueError as e:
             logging.error(f"action: receive_message | result: fail | error: {e}")
-        except Exception as e:
-            logging.error(f"action: receive_message | result: fail | unexpected error: {e}")
 
     def __handle_new_bet_message(self):
         try:
@@ -90,23 +104,23 @@ class Server:
         except ValueError as e:
             logging.error(f"action: apuesta_almacenada | result: fail")
             logging.error(f"error: {e}")
+            self.client_protocol.send_nack()
 
     def __handle_new_bets_batch_message(self):
         try:
+
             bets = self.client_protocol.read_new_bets_batch()
             utils.store_bets(bets)
             self.client_protocol.send_ack()
             logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
-        except Exception as e:
+
+        except ValueError as e:
             logging.error(f"action: apuesta_recibida | result: fail | cantidad: {len(bets) if 'bets_data' in locals() else 0}")
             logging.error(f"error: {e}")
-            try:
-                self.client_protocol.send_nack()
-            except Exception as nack_error:
-                logging.error(f"action: send_nack | result: fail | error: {nack_error}")
+            self.client_protocol.send_nack()
 
-    def __signal_handler(self, sig, frame):
+
+    def __stop_signal_handler(self, sig, frame):
         self.stop()
         logging.info(f"action: signal_handler | result: success | signal: {sig}")
-        sys.exit()
 
