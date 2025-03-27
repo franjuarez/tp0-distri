@@ -1,5 +1,25 @@
 # TP0: Docker + Comunicaciones + Concurrencia
 
+## Ejercicio 1
+
+Para hacer el script decidi usar Python, por ende el .sh invoca a una archivo de python que genera el compose con los parametros pasados. Este no usa ninguna libreria, esta hecho con lo basico
+
+## Ejercicio 2
+
+En este punto se pusieron volumenes de Docker en el compose. Estos volumenes linkean los archivos de config presentes en la computadora host con los mismos puestos en el contenedor. De esta forma, como comparten los archivos, cuando se modifique en ela computadora host, docker va a ver los cambios hechos, y viceversa.
+
+## Ejercicio 3
+
+Para este ejercicio, elegí utilizar un script .sh que inicia un contenedor de Docker a partir de su respectivo Dockerfile, lo ejecuta y, al finalizar, lo detiene y lo elimina. El Dockerfile usa Alpine, una imagen mínima de Linux, y ejecuta un script .sh presente en el contenedor, el cual realiza un ping al servidor utilizando netcat. De esta forma el host no tiene que tener instalado netcat, ya que se levanta un container con este y se hace el ping
+
+## Ejercicio 4
+
+Como el servidor está implementado en Python y el cliente en Go, se implementaron dos enfoques diferentes para manejar las señales.
+
+* **Cliente**: Se creó un canal que recibe notificaciones de señales. De esta forma, cada vez que se genere una señal, el canal recibirá un mensaje. Para finalizar el cliente de manera controlada (graceful), se lanza una goroutine al inicio que se mantiene bloqueada leyendo del canal. Cuando esta corrutina detecta un mensaje, invoca el método `close` del Cliente, el cual se encarga de cerrar el socket asociado a la conexión con el servidor (si está activo).
+
+* **Servidor**: Se implementó un manejador de señales dentro de la clase `Servidor`. Al recibir una señal, este manejador invoca una función definida para tal fin. Esta función cierra el servidor llamando al método `stop`, el cual se encarga de cerrar la conexión con el cliente (si está activa) y el socket aceptador del servidor.
+
 ## Ejercicio 5
 
 Para este ejercicio se tuvo que crear un protocolo de comunicaion. Se detallara a continuacion.
