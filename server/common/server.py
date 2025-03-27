@@ -10,6 +10,7 @@ class Server:
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind(('', port))
         self._server_socket.listen(listen_backlog)
+        self.client_protocol = None
 
     def run(self):
         """
@@ -25,8 +26,8 @@ class Server:
         try:
             while True:
                     client_sock = self.__accept_new_connection()
-                    client_protocol = Protocol(client_sock)
-                    self.__handle_client_connection(client_protocol)
+                    self.client_protocol = Protocol(client_sock)
+                    self.__handle_client_connection()
         except OSError as e:
             try:
                 self.stop()
@@ -41,26 +42,31 @@ class Server:
             logging.error(f"action: accept_connection | result: fail | unexpected error: {e}")
 
     def stop(self):
-        self._server_socket.close()
+        try:
+            self._server_socket.close()
+            if self.client_protocol:
+                self.client_protocol.close()
+        except OSError:
+            return
 
-    def __read_new_message(self, protocol):
+    def __read_new_message(self):
         """Lee el tipo de mensaje y maneja NEW_BET."""
-        msg_type = protocol.read_new_message()
+        msg_type = self.client_protocol.read_new_message()
         
         if msg_type == MessageType.NEW_CLIENT:
             try:
-                bet_data = protocol.read_new_client_bet()
+                bet_data = self.client_protocol.read_new_client_bet()
                 utils.store_bets([bet_data])
-                protocol.send_ack()
+                self.client_protocol.send_ack()
                 logging.info(f'action: apuesta_almacenada | result: success | dni: {bet_data.document} | numero: {bet_data.number}')
             except Exception as e:
                 logging.error(f'action: apuesta_almacenada | result: fail | error: {e}')
-                protocol.send_nack()
+                self.client_protocol.send_nack()
         else:
             raise ValueError(f"Unexpected message type:{msg_type}")
 
 
-    def __handle_client_connection(self, protocol):
+    def __handle_client_connection(self):
         """
         Read message from a specific client socket and closes the socket
 
@@ -68,13 +74,13 @@ class Server:
         client socket will also be closed
         """
         try:
-            self.__read_new_message(protocol)
+            self.__read_new_message()
         except OSError as e:
             logging.error("action: receive_message | result: fail | error: {}".format(e))
         except Exception as e:
             logging.error("action: receive_message or send_message | result: fail | unexpected error: {}".format(e))
         finally:
-            protocol.close()
+            self.client_protocol.close()
 
     def __accept_new_connection(self):
         """
