@@ -21,11 +21,24 @@ class Server:
 
         # TODO: Modify this program to handle signal to graceful shutdown
         # the server
-        signal.signal(signal.SIGTERM, self.__signal_handler)
+        signal.signal(signal.SIGTERM, self.__stop_signal_handler)
 
-        while True:
-            client_sock = self.__accept_new_connection()
-            self.__handle_client_connection(client_sock)
+        try:
+            while True:
+                    client_sock = self.__accept_new_connection()
+                    self.__handle_client_connection(client_sock)
+        except OSError as e:
+            try:
+                self.stop()
+            except Exception as e:
+                logging.error(f"action: stop_server | result: fail | error: {e}")
+            logging.info(f"server stopped")
+        except Exception as e:
+            try:
+                self.stop()
+            except Exception as e:
+                logging.error(f"action: stop_server | result: fail | error: {e}")
+            logging.error(f"action: accept_connection | result: fail | unexpected error: {e}")
 
     def stop(self):
         self._server_socket.close()
@@ -46,6 +59,8 @@ class Server:
             client_sock.send("{}\n".format(msg).encode('utf-8'))
         except OSError as e:
             logging.error("action: receive_message | result: fail | error: {e}")
+        except Exception as e:
+            logging.error("action: receive_message or send_message | result: fail | unexpected error: {}".format(e))
         finally:
             client_sock.close()
 
@@ -63,7 +78,6 @@ class Server:
         logging.info(f'action: accept_connections | result: success | ip: {addr[0]}')
         return c
     
-    def __signal_handler(self, sig, frame):
+    def __stop_signal_handler(self, sig, frame):
         self.stop()
         logging.info(f"action: signal_handler | result: success | signal: {sig}")
-        sys.exit()
