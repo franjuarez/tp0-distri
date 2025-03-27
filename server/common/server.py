@@ -9,6 +9,7 @@ class Server:
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind(('', port))
         self._server_socket.listen(listen_backlog)
+        self.client_sock = None
 
     def run(self):
         """
@@ -25,8 +26,8 @@ class Server:
 
         try:
             while True:
-                    client_sock = self.__accept_new_connection()
-                    self.__handle_client_connection(client_sock)
+                    self.client_sock = self.__accept_new_connection()
+                    self.__handle_client_connection()
         except OSError as e:
             try:
                 self.stop()
@@ -41,9 +42,14 @@ class Server:
             logging.error(f"action: accept_connection | result: fail | unexpected error: {e}")
 
     def stop(self):
-        self._server_socket.close()
+        try:
+            self._server_socket.close()
+            if self.client_sock:
+                self.client_sock.close()
+        except OSError:
+            return
 
-    def __handle_client_connection(self, client_sock):
+    def __handle_client_connection(self):
         """
         Read message from a specific client socket and closes the socket
 
@@ -52,17 +58,17 @@ class Server:
         """
         try:
             # TODO: Modify the receive to avoid short-reads
-            msg = client_sock.recv(1024).rstrip().decode('utf-8')
-            addr = client_sock.getpeername()
+            msg = self.client_sock.recv(1024).rstrip().decode('utf-8')
+            addr = self.client_sock.getpeername()
             logging.info(f'action: receive_message | result: success | ip: {addr[0]} | msg: {msg}')
             # TODO: Modify the send to avoid short-writes
-            client_sock.send("{}\n".format(msg).encode('utf-8'))
+            self.client_sock.send("{}\n".format(msg).encode('utf-8'))
         except OSError as e:
             logging.error("action: receive_message | result: fail | error: {e}")
         except Exception as e:
             logging.error("action: receive_message or send_message | result: fail | unexpected error: {}".format(e))
         finally:
-            client_sock.close()
+            self.client_sock.close()
 
     def __accept_new_connection(self):
         """
