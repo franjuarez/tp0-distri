@@ -1,5 +1,220 @@
 # TP0: Docker + Comunicaciones + Concurrencia
 
+## Ejercicio 1
+
+Para hacer el script decidi usar Python, por ende el .sh invoca a una archivo de python que genera el compose con los parametros pasados. Este no usa ninguna libreria, esta hecho con lo basico
+
+## Ejercicio 2
+
+En este punto se pusieron volumenes de Docker en el compose. Estos volumenes linkean los archivos de config presentes en la computadora host con los mismos puestos en el contenedor. De esta forma, como comparten los archivos, cuando se modifique en ela computadora host, docker va a ver los cambios hechos, y viceversa.
+
+## Ejercicio 3
+
+Para este ejercicio, elegí utilizar un script .sh que inicia un contenedor de Docker a partir de su respectivo Dockerfile, lo ejecuta y, al finalizar, lo detiene y lo elimina. El Dockerfile usa Alpine, una imagen mínima de Linux, y ejecuta un script .sh presente en el contenedor, el cual realiza un ping al servidor utilizando netcat. De esta forma el host no tiene que tener instalado netcat, ya que se levanta un container con este y se hace el ping
+
+## Ejercicio 4
+
+Como el servidor está implementado en Python y el cliente en Go, se implementaron dos enfoques diferentes para manejar las señales.
+
+* **Cliente**: Se creó un canal que recibe notificaciones de señales. De esta forma, cada vez que se genere una señal, el canal recibirá un mensaje. Para finalizar el cliente de manera controlada (graceful), se lanza una goroutine al inicio que se mantiene bloqueada leyendo del canal. Cuando esta corrutina detecta un mensaje, invoca el método `close` del Cliente, el cual se encarga de cerrar el socket asociado a la conexión con el servidor (si está activo).
+
+* **Servidor**: Se implementó un manejador de señales dentro de la clase `Servidor`. Al recibir una señal, este manejador invoca una función definida para tal fin. Esta función cierra el servidor llamando al método `stop`, el cual se encarga de cerrar la conexión con el cliente (si está activa) y el socket aceptador del servidor.
+
+## Ejercicio 5
+
+Para este ejercicio se tuvo que crear un protocolo de comunicaion. Se detallara a continuacion.
+
+### Protocolo
+
+El protocolo define la estructura de los mensajes intercambiados entre el cliente y el servidor, asegurando una comunicación eficiente y estructurada en la aplicación.
+
+---
+
+### Mensajes
+
+El protocolo contempla los siguientes tipos de mensajes:
+
+| Mensaje        | Código |
+|----------------|--------|
+| NEW_BET        | 0      |
+| ACK            | 1      |
+| NACK           | 3      |
+
+El flujo principal del programa es el siguiente:
+1. **El cliente envía** los datos de una/s persona/s para registrar una/s apuesta/s.
+2. **El servidor procesa la solicitud y devuelve** una confirmación (ACK) o NACK en caso de que no haya sido exitoso.
+
+---
+
+### Formato de Mensajes
+
+#### 🔹 Formato del mensaje `NEW_BET`
+El mensaje `NEW_BET` tiene la siguiente estructura:
+
+| Campo          | Tamaño (bytes) | Descripción                                      |
+|---------------|---------------|--------------------------------------------------|
+| **Tipo**      | 1             | Tipo de mensaje (`1` = NEW_BET)               |
+| **Nro de agencia** | 1             | Numero de la agencia              |
+| **Long. Nombre**  | 1         | Longitud en bytes del campo Nombre              |
+| **Nombre**    | L1            | Nombre de la persona                            |
+| **Long. Apellido** | 1        | Longitud en bytes del campo Apellido            |
+| **Apellido**  | L2            | Apellido de la persona                          |
+| **Long. Documento** | 1       | Longitud en bytes del campo Documento            |
+| **Documento**  | L3            | Documento de la persona                          |
+| **Long. Nacim.**  | 1         | Longitud en bytes del campo Nacimiento          |
+| **Nacimiento** | L4           | Fecha de nacimiento (AAAA-MM-DD)                |
+| **Long. Número**  | 1         | Longitud en bytes del campo Número              |
+| **Número**    | L5            | Número de identificación                        |
+
+**Nota:** Se utilizo **1 bytes** para representar las longitudes de cada campo, permitiendo mensajes de hasta **255 bytes** de longitud, lo cual es suficiente para esta aplicación.
+
+---
+
+#### **🔹 Formato del mensaje `ACK`**
+El mensaje `ACK` es una simple confirmación del servidor.
+
+#### **🔹 Formato del mensaje `NACK`**
+El mensaje `NACK` es un mensjae del servidor que indica que no salio como esperado.
+
+## Ejercicio 6
+
+Se modifico el protocolo, quedando de esta manera: 
+
+| Mensaje        | Código |
+|----------------|--------|
+| NEW_BET        | 0      |
+| ACK            | 1      |
+| NEW_BETS_BATCH | 2      |
+| NACK           | 3      |
+
+#### 🔹 Formato del mensaje `NEW_BETS_BATCH`
+
+El maximo numero de apuestas por batch esta definido en el config.yaml, pero este numero puede ser que pase los 8Kb maximos por mensaje. Debido a esto, el cliente al ir armando el paquete, chequea el numero de bytes correspondiente, si nota que el paquete se pasa de los 8Kb, procede a mandarlo y crear otro mensaje para terminar de mandar las apuestas. Este algoritmo es escalable a N mensajes de batch.
+
+El mensaje `NEW_BETS_BATCH` tiene la siguiente estructura:
+
+| Campo                | Tamaño (bytes) | Descripción                                      |
+|----------------------|--------------- |--------------------------------------------------|
+| **Tipo**                 | 1              | Tipo de mensaje (`3` = NEW_BETS_BATCH)           |
+| **Nro de agencia**       | 1              | Numero de la agencia                             |
+| **Cantidad de apuestas** | 2              | Numero apuestas en el mensaje                    |
+| **Bets**                 | Variable       | Secuencia de apuestas en el formato de `NEW_BET` |
+
+
+Cada apuesta dentro del batch sigue el mismo formato que el mensaje NEW_BET, sin incluir ni el campo Tipo ni Agencia nuevamente.
+
+**Nota:** Se utilizaron **2 bytes** para representar la cantidad de bets, permitiendo mandar hasta **65.535** apuestas, lo cual es suficiente para esta aplicación.
+
+---
+
+## Ejercicio 7
+
+Para este punto se modifico el protocolo para tener en cuenta los nuevos mensajes, queda de esta forma:
+
+| Mensaje         | Código |
+|-----------------|--------|
+| NEW_BET         | 0      |
+| ACK             | 1      |
+| NEW_BETS_BATCH  | 2      |
+| NACK            | 3      |
+| BETS_FINISHED   | 4      |
+| ASK_WINNERS     | 5      |
+| WAIT_WINNERS    | 6      |
+| WINNERS_READY   | 7      |
+
+### 🔹 Flujo de Comunicación
+
+#### **Cliente**
+1. Envía todas las apuestas y luego manda `BETS_FINISHED`.
+2. Inmediatamente después, envía `ASK_WINNERS` para consultar los ganadores.
+3. Dependiendo de la respuesta del servidor:
+   - Si recibe `WAIT_WINNERS`, significa que aún no están listos los resultados. En este caso, el cliente espera 1 segundo y vuelve a preguntar.
+   - Si recibe `WINNERS_READY`, el servidor envía inmediatamente después la lista de DNIs de los ganadores de la agencia consultada.
+
+#### **Servidor**
+1. Recibe apuestas de cada cliente hasta que todos envíen `BETS_FINISHED`.
+2. Lleva un registro de qué clientes finalizaron sus envíos.
+3. Cuando ha recibido las apuestas de las 5 agencias, realiza el sorteo.
+4. Al recibir `ASK_WINNERS`:
+   - Responde con `WAIT_WINNERS` si el sorteo aún no se ha realizado.
+   - Responde con `WINNERS_READY` y envía la lista de DNIs ganadores cuando los resultados estén disponibles.
+
+---
+#### **🔹 Formato del mensaje `BETS_FINISHED`**
+El mensaje `BETS_FINISHED` es un mensaje del cliente que notifica al servidor de que este cliente termino de mandar todas las apuestas
+
+Tiene la siguiente estructura:
+
+| Campo                     | Tamaño (bytes) | Descripción                                      |
+|---------------------------|--------------- |--------------------------------------------------|
+| **Tipo**                  | 1              | Tipo de mensaje `BETS_FINISHED` = 7              |
+| **Nro de agencia**        | 1              | Numero de agencia del cliente                    |
+
+#### **🔹 Formato del mensaje `ASK_WINNERS`**
+El mensaje `ASK_WINNERS` es un mensaje del cliente que le pregunta al servidor por los ganadores del sorteo
+
+Tiene la siguiente estructura:
+
+| Campo                     | Tamaño (bytes) | Descripción                                      |
+|---------------------------|--------------- |--------------------------------------------------|
+| **Tipo**                  | 1              | Tipo de mensaje `ASK_WINNERS` = 7              |
+| **Nro de agencia**        | 1              | Numero de agencia del cliente                    |
+
+
+#### **🔹 Formato del mensaje `WAIT_WINNERS`**
+El mensaje `WAIT_WINNERS` es un mensaje del servidor que notifica al cliente de que los ganadores todavia no estan listos
+
+#### **🔹 Formato del mensaje `WINNERS_READY`**
+El mensaje `WINNERS_READY` es un mensaje del servidor que contiene la lista de DNIs ganadores correspondientes a la agencia del cliente que hizo la consulta
+
+Tiene la siguiente estructura:
+
+| Campo                     | Tamaño (bytes) | Descripción                                      |
+|---------------------------|--------------- |--------------------------------------------------|
+| **Tipo**                  | 1              | Tipo de mensaje `WINNERS_READY` = 7               |
+| **Cantidad de ganadores** | 2              | Numero de ganadores en el mensaje                |
+| **Ganadores**             | Variable       | Lista de DNIs de ganadores                       |
+
+Como los DNIs tienen siempre 8 caracteres, el servidor solamente manda la cantidad que hay y luego todos los DNIs seguidos. El cliente sabe que se leen de a 8 caracteres
+
+## Ejercicio 8
+
+Debido a la transición hacia un sistema de procesamiento en paralelo, se optó por utilizar la librería `multiprocessing`. Para adaptarse a esta librería y mejorar el diseño del programa, se separó la lógica del servidor de la de los clientes que atiende. Ahora, el servidor se encarga principalmente de aceptar nuevas conexiones. Al recibir estas conexiones, el servidor crea un proceso por cada cliente, siendo este responsable de intercambiar los mensajes con el cliente.
+
+El procesamiento en paralelo de las solicitudes de los clientes introduce posibles `race conditions`, ya que para procesar las solicitudes es necesario leer o escribir en el archivo donde se almacenan las apuestas, así como en la información relacionada con la lotería. Para abordar el problema relacionado con el archivo de las apuestas, se implementó un `Read-Write Lock`, que permite múltiples lecturas concurrentes, pero bloquea las escrituras cuando hay lectores o escritores activos. Esto se logra mediante una conditional variable que limita el acceso al archivo entre los diferentes procesos.
+
+En cuanto al acceso a la variable compartida de la lotería, se implementó un `Lock` sencillo, el cual asegura que no más de un proceso pueda acceder a esta variable de manera simultánea.
+
+Al ahora ser paralelo, se decidio modificar el protocolo para que el cliente no tenga que abrir conexiones nuevas, y pueda simplemente tener 1 abierta con el servidor y mandar todo por alli.
+
+El unico flujo que cambia es el de `NEW_BETS_BATCH`, ya que ahora, en caso de que maxBatchAmount sea mas pesado que 8Kb, se mandara todas las bets en 1 mensaje pero en paquetes de 8Kb como maximo. Ahora pasa a tener esta estructura:
+
+| Campo                | Tamaño (bytes) | Descripción                                      |
+|----------------------|--------------- |--------------------------------------------------|
+| **Tipo**                 | 1              | Tipo de mensaje (`3` = NEW_BETS_BATCH)           |
+| **Nro de agencia**       | 1              | Numero de la agencia                             |
+| **Cant de apuestas** | 2              | Numero apuestas en el mensaje                    |
+| **Bets**                 | Variable       | Secuencia de apuestas en el formato de `NEW_BET` |
+| **Tipo**                | 1              |  `NEW_BETS_BATCH` si quedan mas apuestas o `EOF` si no hay mas   |
+
+De esta forma el servidor lee la cantidad de apuestas mandadas en el primer mensaje y luego lee si vienen mas apuestas o si terminaron.
+
+Al agregar el mensaje EOF, el protocolo quedaria asi:
+
+| Mensaje         | Código |
+|-----------------|--------|
+| NEW_BET         | 0      |
+| ACK             | 1      |
+| NEW_BETS_BATCH  | 2      |
+| NACK            | 3      |
+| BETS_FINISHED   | 4      |
+| ASK_WINNERS     | 5      |
+| WAIT_WINNERS    | 6      |
+| WINNERS_READY   | 7      |
+| EOF             | 8      |
+
+## Consigna
+
 En el presente repositorio se provee un esqueleto básico de cliente/servidor, en donde todas las dependencias del mismo se encuentran encapsuladas en containers. Los alumnos deberán resolver una guía de ejercicios incrementales, teniendo en cuenta las condiciones de entrega descritas al final de este enunciado.
 
  El cliente (Golang) y el servidor (Python) fueron desarrollados en diferentes lenguajes simplemente para mostrar cómo dos lenguajes de programación pueden convivir en el mismo proyecto con la ayuda de containers, en este caso utilizando [Docker Compose](https://docs.docker.com/compose/).

@@ -3,7 +3,10 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/signal"
+	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/op/go-logging"
@@ -37,6 +40,7 @@ func InitConfig() (*viper.Viper, error) {
 	v.BindEnv("loop", "period")
 	v.BindEnv("loop", "amount")
 	v.BindEnv("log", "level")
+	v.BindEnv("batch", "maxAmount")
 
 	// Try to read configuration from config file. If config file
 	// does not exists then ReadInConfig will fail but configuration
@@ -87,6 +91,7 @@ func PrintConfig(v *viper.Viper) {
 		v.GetInt("loop.amount"),
 		v.GetDuration("loop.period"),
 		v.GetString("log.level"),
+		v.GetInt("batch.maxAmount"),
 	)
 }
 
@@ -103,13 +108,33 @@ func main() {
 	// Print program config with debugging purposes
 	PrintConfig(v)
 
+	id := v.GetString("id")
+	idUint, err := strconv.ParseUint(id, 10, 8)
+	if err != nil {
+		log.Criticalf("action: parse id to uint | result: fail | client_id: %s | error: %v", id, err)
+	}
+
 	clientConfig := common.ClientConfig{
 		ServerAddress: v.GetString("server.address"),
-		ID:            v.GetString("id"),
+		ID:            uint8(idUint),
 		LoopAmount:    v.GetInt("loop.amount"),
 		LoopPeriod:    v.GetDuration("loop.period"),
+		BatchSize:     v.GetInt("batch.maxAmount"),
 	}
 
 	client := common.NewClient(clientConfig)
+
+	// Create a channel to receive OS signals
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGTERM)
+
+	// Create a goroutine to handle signals
+	go func() {
+		sig := <-sigs
+		log.Infof("action: signal | result: success | signal: %v", sig)
+		client.Close()
+		os.Exit(0)
+	}()
+
 	client.StartClientLoop()
 }

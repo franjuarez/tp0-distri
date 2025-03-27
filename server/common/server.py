@@ -1,13 +1,35 @@
 import socket
 import logging
+import signal
+import sys
+from multiprocessing import Process
+from multiprocessing.managers import BaseManager
+from .bets_file_monitor import BetsFileMonitor
+from .client import Client
+from .lottery import Lottery
 
+""" Bets storage location. """
+STORAGE_FILEPATH = "./bets.csv"
+
+class CustomManager(BaseManager):
+    pass
+
+
+CustomManager.register('BetsFileMonitor', BetsFileMonitor)
+CustomManager.register('Lottery', Lottery)
 
 class Server:
-    def __init__(self, port, listen_backlog):
-        # Initialize server socket
+    def __init__(self, port, listen_backlog, agency_number):
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind(('', port))
         self._server_socket.listen(listen_backlog)
+        self.agency_number = agency_number
+        self.clients = []
+        self.clients_processes = [] #TODO: cambiar a lista cuando tenga 1 conex?
+
+        self.manager = CustomManager()
+        self.manager.start()
+
 
     def run(self):
         """
@@ -17,31 +39,34 @@ class Server:
         communication with a client. After client with communucation
         finishes, servers starts to accept new connections again
         """
+        signal.signal(signal.SIGTERM, self.__stop_signal_handler)
 
-        # TODO: Modify this program to handle signal to graceful shutdown
-        # the server
-        while True:
-            client_sock = self.__accept_new_connection()
-            self.__handle_client_connection(client_sock)
+        bets_file = self.manager.BetsFileMonitor(STORAGE_FILEPATH)
+        lottery = self.manager.Lottery(self.agency_number, bets_file)
 
-    def __handle_client_connection(self, client_sock):
-        """
-        Read message from a specific client socket and closes the socket
-
-        If a problem arises in the communication with the client, the
-        client socket will also be closed
-        """
         try:
-            # TODO: Modify the receive to avoid short-reads
-            msg = client_sock.recv(1024).rstrip().decode('utf-8')
-            addr = client_sock.getpeername()
-            logging.info(f'action: receive_message | result: success | ip: {addr[0]} | msg: {msg}')
-            # TODO: Modify the send to avoid short-writes
-            client_sock.send("{}\n".format(msg).encode('utf-8'))
+            while True:
+                    client_sock = self.__accept_new_connection()
+                    
+                    client = Client(client_sock, bets_file, lottery)
+                    
+                    p = Process(target=client.run)
+                    p.start()
+
+                    self.clients.append(client)
+                    self.clients_processes.append(p)
         except OSError as e:
-            logging.error("action: receive_message | result: fail | error: {e}")
-        finally:
-            client_sock.close()
+            try:
+                self.stop()
+            except Exception as e:
+                logging.error(f"action: stop_server | result: fail | error: {e}")
+            logging.info(f"server stopped")
+        except Exception as e:
+            try:
+                self.stop()
+            except Exception as e:
+                logging.error(f"action: stop_server | result: fail | error: {e}")
+            logging.error(f"action: accept_connection | result: fail | unexpected error: {e}")
 
     def __accept_new_connection(self):
         """
@@ -56,3 +81,19 @@ class Server:
         c, addr = self._server_socket.accept()
         logging.info(f'action: accept_connections | result: success | ip: {addr[0]}')
         return c
+
+    def stop(self):
+        try:
+            self._server_socket.close()
+            for client in self.clients:
+                client.stop()
+            for p in self.clients_processes:
+                p.terminate()
+                p.join()
+        except OSError as e:
+            return
+
+    def __stop_signal_handler(self, sig, frame):
+        self.stop()
+        logging.info(f"action: signal_handler | result: success | signal: {sig}")
+
